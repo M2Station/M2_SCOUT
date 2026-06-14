@@ -6,6 +6,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { app, BrowserWindow } = require('electron');
 const { registerIpc } = require('./ipc');
 const { parentToolDir, appDir } = require('./paths');
@@ -116,6 +117,34 @@ function openCscopeWindow(ctx) {
   return win;
 }
 
+// Broadcast the app's real CPU usage to every window once a second. The old
+// pidusage path relied on `wmic`, which Windows 11 has removed (spawn wmic
+// ENOENT), so we use Electron's built-in app metrics instead: zero extra
+// dependencies and reliable cross-platform. We sum each Electron process's
+// percentCPUUsage (which is relative to a single core) and divide by the
+// logical core count, so the value reads as a 0-100 machine-wide percent.
+let cpuTimer = null;
+function startCpuBroadcaster() {
+  if (cpuTimer) return;
+  const cores = Math.max(1, os.cpus().length);
+  cpuTimer = setInterval(() => {
+    let percent = 0;
+    try {
+      for (const m of app.getAppMetrics()) {
+        if (m.cpu && typeof m.cpu.percentCPUUsage === 'number') percent += m.cpu.percentCPUUsage;
+      }
+    } catch (_e) {
+      percent = 0;
+    }
+    percent = Math.max(0, Math.min(100, Math.round(percent / cores)));
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+        win.webContents.send('cpu:update', { percent });
+      }
+    }
+  }, 1000);
+}
+
 app.whenReady().then(() => {
   // Make bundled fonts available to the OS so the CSS font stacks resolve
   // (e.g. "Source Code Pro"). Done before the window is created so the fresh
@@ -144,6 +173,7 @@ app.whenReady().then(() => {
 
   registerIpc({ openCscopeWindow, getInitialFolder: () => initialFolder });
   createMainWindow();
+  startCpuBroadcaster();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();

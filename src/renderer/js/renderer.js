@@ -658,7 +658,7 @@ class Tab {
   _endSearchUI() {
     if (this.els.progress) this.els.progress.hidden = true;
     if (this.els.statusRate) this.els.statusRate.textContent = '';
-    for (const el of [this.els.cpu]) if (el) el.textContent = 'CPU: --%';
+    // The CPU slot keeps showing live CPU% - the 200ms painter repaints it.
   }
 
   _onLive(delta) {
@@ -1572,30 +1572,27 @@ async function boot() {
     if (tab) tab.handleEvent(type, payload);
   });
 
-  // Activity + throughput indicators (P6). While a search runs the CPU slot
-  // shows the real match throughput (matches/sec, derived from the 'progress'
-  // stream) behind a small spinner, and the status bar shows the live elapsed
-  // time. Replaces the old fake 'CPU: ●●●' pulse.
+  // Real CPU usage indicator. The CPU slot shows the app's actual CPU percent,
+  // pushed from the main process via app.getAppMetrics() (~1x/sec); while a
+  // search runs a small spinner is prefixed and the status bar shows the live
+  // elapsed time. Replaces the old always-zero matches/sec throughput and the
+  // even older fake 'CPU: pulse'.
   const SPIN = ['\u280B', '\u2819', '\u2839', '\u2838', '\u283C', '\u2834', '\u2826', '\u2827', '\u2807', '\u280F'];
-  const fmtNum = (n) => {
-    if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-    if (n >= 1e4) return `${Math.round(n / 1000)}k`;
-    if (n >= 1e3) return `${(n / 1000).toFixed(1)}k`;
-    return String(n);
-  };
+  let appCpu = 0;
+  S.onCpuUpdate(({ percent }) => { appCpu = typeof percent === 'number' ? percent : 0; });
   let spin = 0;
   setInterval(() => {
     spin = (spin + 1) % SPIN.length;
     const g = SPIN[spin];
+    const cpuTxt = `CPU: ${appCpu}%`;
     for (const t of manager.tabs) {
-      if (!t.els) continue;
+      if (!t.els || !t.els.cpu) continue;
       if (t.running) {
         const secs = Math.max(0.001, (Date.now() - t.searchStartMs) / 1000);
-        const rate = Math.round(t.progMatches / secs);
-        if (t.els.cpu) t.els.cpu.textContent = `${g} ${fmtNum(rate)}/s`;
         if (t.els.statusRate) t.els.statusRate.textContent = `${secs.toFixed(1)}s`;
-      } else if (t.els.cpu && t.els.cpu.textContent !== 'CPU: --%') {
-        t.els.cpu.textContent = 'CPU: --%';
+        t.els.cpu.textContent = `${g} ${cpuTxt}`;
+      } else {
+        t.els.cpu.textContent = cpuTxt;
       }
     }
   }, 200);
