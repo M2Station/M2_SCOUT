@@ -120,11 +120,18 @@ class SearchSession {
     this.emit('live', { delta });
   }
 
-  _onMatch(path) {
+  _onMatch(path, streamLive = true) {
     this._matchCount += 1;
     this._matchedFiles.add(path);
-    this._liveDelta.set(path, (this._liveDelta.get(path) || 0) + 1);
-    this._scheduleLiveFlush();
+    // In AND mode a single-keyword hit is NOT a confirmed result (the file must
+    // match every keyword), so we must not paint it into the live list or the
+    // user would briefly see files that only match one term. The correct
+    // intersection is computed and rendered when the search finishes. We still
+    // advance the progress counters so the UI shows the search is working.
+    if (streamLive) {
+      this._liveDelta.set(path, (this._liveDelta.get(path) || 0) + 1);
+      this._scheduleLiveFlush();
+    }
     if (!this._progressTimer) {
       this._progressTimer = setTimeout(() => {
         this._progressTimer = null;
@@ -165,7 +172,12 @@ class SearchSession {
     const exe = resolveExe(rgExe);
     const t0 = Date.now();
     const onDebug = (msg) => this.emit('debug', { msg });
-    const onMatch = (p) => this._onMatch(p);
+    // Only stream live (per-file) results for OR. For AND we cannot know the
+    // intersection until every keyword has run, so streaming single-keyword
+    // hits would show wrong, partial results that flip to the correct set only
+    // at the end. Render AND results once, correctly, on 'done'.
+    const streamLive = mode !== 'AND';
+    const onMatch = (p) => this._onMatch(p, streamLive);
 
     const useParallelAnd = mode === 'AND' && keywords.length >= SearchConfig.PARALLEL_AND_THRESHOLD;
     if (useParallelAnd) onDebug(`[PARALLEL AND] ${keywords.length} keywords will run concurrently`);
