@@ -10,6 +10,7 @@ const { app, BrowserWindow } = require('electron');
 const { registerIpc } = require('./ipc');
 const { parentToolDir, appDir } = require('./paths');
 const { ensureFontsInstalled } = require('./fonts');
+const { version: APP_VERSION } = require('../../package.json');
 
 // Electron keeps a GPU shader disk cache under the user-data folder. On some
 // Windows setups that folder can't be created or moved (antivirus lock, a
@@ -48,7 +49,7 @@ function createMainWindow() {
     height: 880,
     minWidth: 900,
     minHeight: 560,
-    title: 'M2_SCOUT V20260402 - Tabbed Search Tool [Parallel AND | Live Filter]',
+    title: `M2_SCOUT v${APP_VERSION}`,
     icon: findIcon(),
     autoHideMenuBar: true,
     backgroundColor: '#f4f4f4',
@@ -61,6 +62,11 @@ function createMainWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+
+  // Keep the versioned window title ("M2_SCOUT v0.0.1"). Without this, the
+  // page's own <title> element would override the BrowserWindow title once
+  // index.html finishes loading.
+  mainWindow.on('page-title-updated', (e) => e.preventDefault());
 
   // Persist settings before the window is destroyed. The browser `beforeunload`
   // event is unreliable for this in Electron, so we intercept the window
