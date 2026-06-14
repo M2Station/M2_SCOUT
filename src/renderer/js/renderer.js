@@ -884,8 +884,15 @@ class Tab {
     const self = this;
     function renderChildren(node, depth) {
       const frag = document.createDocumentFragment();
-      const folderNames = [...node.folders.keys()]
-        .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+      // Folder + leaf order follows the active sort toggle: by aggregated /
+      // own match count (descending) when sortMode is 'count', else by name.
+      const folderNames = [...node.folders.keys()].sort((a, b) => {
+        if (self.sortMode === 'count') {
+          const d = node.folders.get(b).count - node.folders.get(a).count;
+          if (d) return d;
+        }
+        return a.toLowerCase().localeCompare(b.toLowerCase());
+      });
       for (const name of folderNames) {
         const child = node.folders.get(name);
         const collapsed = self.treeCollapsed.has(child.key);
@@ -909,8 +916,13 @@ class Tab {
         kids.appendChild(renderChildren(child, depth + 1));
         frag.appendChild(kids);
       }
-      const files = node.files.slice()
-        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      const files = node.files.slice().sort((a, b) => {
+        if (self.sortMode === 'count') {
+          const d = b.count - a.count;
+          if (d) return d;
+        }
+        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      });
       for (const f of files) {
         const row = document.createElement('div');
         row.className = 'file-row tree-file';
