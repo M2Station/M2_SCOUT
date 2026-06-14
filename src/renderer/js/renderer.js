@@ -7,6 +7,7 @@
 
 const S = window.m2scout;
 const HLR = window.M2ScoutHighlight;
+const T = (k, v) => (window.M2I18n ? window.M2I18n.t(k, v) : k);
 
 let CONFIG = null;
 let HL_RULES = {};
@@ -87,7 +88,7 @@ const manager = {
       const close = document.createElement('button');
       close.className = 'tab-close';
       close.textContent = '✕';
-      close.title = 'Close (Ctrl+W)';
+      close.title = T('tab.close');
       close.addEventListener('click', (e) => { e.stopPropagation(); this.closeByIndex(i); });
       el.appendChild(close);
 
@@ -200,6 +201,7 @@ class Tab {
 
     this._wire();
     this._applyDefaults();
+    if (window.M2I18n) window.M2I18n.apply(this.contentEl);
   }
 
   _applyDefaults() {
@@ -387,13 +389,13 @@ class Tab {
     this.previewText = '';
     this.els.status.textContent = `${label}  [${this.mode()}] ${parseKeywords(this.val('keywords')).join(', ')}`;
     this.els.statusMatch.textContent = '';
-    this.els.filesCount.textContent = 'Files: —';
+    this.els.filesCount.textContent = `${T('files.label')}: —`;
   }
 
   async search() {
     if (this.running) return;
     this.saveToIni();
-    this._beginSearch('Searching...');
+    this._beginSearch(T('status.searching'));
     const r = await S.startSearch(this._searchParams());
     if (!r.ok) { this._failStart(r.error); }
   }
@@ -401,7 +403,7 @@ class Tab {
   async searchFilename() {
     if (this.running) return;
     this.saveToIni();
-    this._beginSearch('Searching filenames...');
+    this._beginSearch(T('status.searchingFilenames'));
     const r = await S.startFilenameSearch(this._searchParams());
     if (!r.ok) { this._failStart(r.error); }
   }
@@ -409,7 +411,7 @@ class Tab {
   _failStart(error) {
     this.running = false;
     this.updateButtons(false);
-    this.els.status.textContent = 'Ready.';
+    this.els.status.textContent = T('status.ready');
     S.showError('Error', error || 'Search failed to start');
   }
 
@@ -435,7 +437,7 @@ class Tab {
     else if (type === 'live') this._onLive(payload.delta);
     else if (type === 'progress') this.els.statusMatch.textContent = `Matched Files: ${payload.matchedFiles}  Matches: ${payload.matches}`;
     else if (type === 'done') this._onDone(payload);
-    else if (type === 'error') { S.showError('Error', payload.msg); this.running = false; this.updateButtons(false); this.els.status.textContent = 'Ready.'; }
+    else if (type === 'error') { S.showError('Error', payload.msg); this.running = false; this.updateButtons(false); this.els.status.textContent = T('status.ready'); }
   }
 
   _onLive(delta) {
@@ -466,9 +468,9 @@ class Tab {
     const n = this.files.length;
     const elapsed = (payload.elapsedMs / 1000).toFixed(2);
     const total = items.reduce((s, [, c]) => s + c, 0);
-    this.els.statusMatch.textContent = payload.filenameMode ? `Files: ${n}` : `Files: ${n}  Matches: ${total}`;
+    this.els.statusMatch.textContent = payload.filenameMode ? `${T('files.label')}: ${n}` : `${T('files.label')}: ${n}  ${T('files.matches')} ${total}`;
     const stoppedTxt = payload.stopped ? ' [STOPPED]' : '';
-    const label = payload.filenameMode ? 'Filename search done' : 'Done';
+    const label = payload.filenameMode ? T('status.filenameDone') : T('status.done');
     this.els.status.textContent = `${label} in ${elapsed}s  |  [${this.mode()}] ${parseKeywords(this.val('keywords')).join(', ')}${stoppedTxt}`;
     if (payload.filesSearched != null) this.debug(`SEARCH STATS: elapsed=${elapsed}s | files_searched=${payload.filesSearched}`);
     this.liveMap = new Map();
@@ -494,7 +496,7 @@ class Tab {
     });
     fl.appendChild(frag);
 
-    this.els.filesCount.textContent = `Files: ${this.files.length}`;
+    this.els.filesCount.textContent = `${T('files.label')}: ${this.files.length}`;
     // restore selection by path
     if (this.selPath) {
       const i = this.files.indexOf(this.selPath);
@@ -723,7 +725,14 @@ class Tab {
   }
   _toggleDebug() {
     const collapsed = this.els.debug.classList.toggle('collapsed');
-    this.els.debugToggle.textContent = collapsed ? '▶ DEBUG' : '▼ DEBUG';
+    this.els.debugToggle.textContent = T(collapsed ? 'debug.toggleHidden' : 'debug.toggleShown');
+  }
+
+  refreshI18n() {
+    if (window.M2I18n) window.M2I18n.apply(this.contentEl);
+    const collapsed = this.els.debug.classList.contains('collapsed');
+    this.els.debugToggle.textContent = T(collapsed ? 'debug.toggleHidden' : 'debug.toggleShown');
+    this.els.filesCount.textContent = `${T('files.label')}: ${this.files.length || 0}`;
   }
 
   // ---------- focus ----------
@@ -791,6 +800,15 @@ async function boot() {
 
   const base = manager.add(true);
   base.loadFromIni(baseIniRaw);
+
+  // Localise static + dynamic chrome, and re-localise when the language changes.
+  if (window.M2I18n) window.M2I18n.apply(document);
+  manager.tabs.forEach((t) => t.refreshI18n());
+  window.addEventListener('m2-lang-changed', () => {
+    if (window.M2I18n) window.M2I18n.apply(document);
+    manager.tabs.forEach((t) => t.refreshI18n());
+    manager.renderTabBar();
+  });
 
   // CLI folder
   S.onCliFolder(({ folder }) => { base.setVal('folder', folder); });

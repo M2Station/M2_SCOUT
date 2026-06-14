@@ -6,17 +6,18 @@
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
   <title>CSCOPE</title>
   <link rel="stylesheet" href="css/style.css" />
+  <script src="js/themes.js"></script>
   <style>
     body { padding: 8px; }
     .cs-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
     .cs-row label { font-size: 12px; }
     .cs-row input[type="text"], .cs-row select {
       font-family: var(--font-code); font-size: 12px; padding: 3px 6px;
-      border: 1px solid var(--border); border-radius: 3px; background: #fff;
+      border: 1px solid var(--border); border-radius: 3px; background: var(--input-bg); color: var(--text);
     }
     .cs-folder { max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cs-query { flex: 1; min-width: 240px; }
-    .cs-info { font-size: 12px; color: #444; }
+    .cs-info { font-size: 12px; color: var(--text-soft); }
     .cs-main { display: flex; flex-direction: column; height: calc(100vh - 150px); }
     .cs-top { display: flex; flex: 3; min-height: 0; }
     .cs-results, .cs-preview-pane { display: flex; flex-direction: column; min-width: 0; }
@@ -25,34 +26,35 @@
     .cs-splitter { flex: 0 0 6px; cursor: col-resize;
       background: linear-gradient(to right, transparent 2px, var(--border) 2px, var(--border) 4px, transparent 4px); }
     .cs-list {
-      flex: 1; overflow: auto; border: 1px solid var(--border); background: #fff;
-      font-family: var(--font-code); font-size: 12px;
+      flex: 1; overflow: auto; border: 1px solid var(--border); background: var(--panel);
+      font-family: var(--font-code); font-size: 12px; color: var(--text);
     }
     .cs-item { padding: 1px 6px; white-space: pre; cursor: default; }
-    .cs-item:hover { background: #eef5fb; }
-    .cs-item.selected { background: #cfe8ff; }
+    .cs-item:hover { background: var(--row-hover); }
+    .cs-item.selected { background: var(--row-selected); }
     .cs-preview {
-      flex: 1; margin: 0; overflow: auto; border: 1px solid var(--border); background: #fff;
-      font-family: var(--font-code); font-size: 12px; white-space: pre; padding: 4px 6px;
+      flex: 1; margin: 0; overflow: auto; border: 1px solid var(--border); background: var(--panel);
+      font-family: var(--font-code); font-size: 12px; white-space: pre; padding: 4px 6px; color: var(--text);
     }
-    .cs-debug { flex: 1; margin: 0; overflow: auto; background: #1e1e1e; color: #d4d4d4;
-      font-family: var(--font-code); font-size: 11px; padding: 4px 6px; white-space: pre-wrap; border: 1px solid #444; }
-    .cscope_hl { background: #7FFFD4; }
-    .cs-label { font-size: 11px; color: #555; margin: 4px 0 2px; }
+    .cs-debug { flex: 1; margin: 0; overflow: auto; background: var(--debug-bg); color: var(--debug-text);
+      font-family: var(--font-code); font-size: 11px; padding: 4px 6px; white-space: pre-wrap; border: 1px solid var(--debug-border); }
+    .cscope_hl { background: var(--cscope-hl); color: var(--cscope-hl-text); }
+    .cs-label { font-size: 11px; color: var(--muted); margin: 4px 0 2px; }
   </style>
 </head>
 <body>
   <div class="cs-row">
-    <label>Folder</label>
+    <label data-i18n="cs.folder">Folder</label>
     <span class="cs-folder" id="folderLabel"></span>
-    <button class="btn" id="openFolder">Open Folder</button>
-    <button class="btn" id="btnIndex">INDEX</button>
+    <button class="btn" id="openFolder" data-i18n="cs.openFolder">Open Folder</button>
+    <button class="btn" id="btnIndex" data-i18n="cs.index">INDEX</button>
+    <button class="btn" id="btnSettings" data-i18n-title="settings.open" title="Settings" style="margin-left:auto;">⚙</button>
   </div>
 
   <div class="cs-row">
     <label>cscope.exe</label>
     <input type="text" id="cscopeExe" style="width: 220px;" />
-    <label>Mode</label>
+    <label data-i18n="cs.mode">Mode</label>
     <select id="mode">
       <option>0 Find this C symbol</option>
       <option>1 Find definition</option>
@@ -67,9 +69,9 @@
   </div>
 
   <div class="cs-row">
-    <label>Query</label>
+    <label data-i18n="cs.query">Query</label>
     <input type="text" id="query" class="cs-query" />
-    <button class="btn btn-blue" id="btnSearch">SEARCH</button>
+    <button class="btn btn-blue" id="btnSearch" data-i18n="cs.search">SEARCH</button>
   </div>
 
   <div class="cs-row">
@@ -79,25 +81,27 @@
   <div class="cs-main">
     <div class="cs-top">
       <div class="cs-results">
-        <div class="cs-label">Results (double click to open, F1 copy all)</div>
+        <div class="cs-label" data-i18n="cs.results">Results (double click to open, F1 copy all)</div>
         <div class="cs-list" id="results" tabindex="0"></div>
       </div>
       <div class="cs-splitter" id="csSplitter"></div>
       <div class="cs-preview-pane">
-        <div class="cs-label">PREVIEW (right click: Open / Copy path / Copy snippet)</div>
+        <div class="cs-label" data-i18n="cs.previewLabel">PREVIEW (right click: Open / Copy path / Copy snippet)</div>
         <pre class="cs-preview" id="preview"></pre>
       </div>
     </div>
-    <div class="cs-label">DEBUG (double click: open selected result)</div>
+    <div class="cs-label" data-i18n="cs.debugLabel">DEBUG (double click: open selected result)</div>
     <pre class="cs-debug" id="debug"></pre>
   </div>
 
   <div class="ctxmenu" id="csCtxMenu" hidden>
-    <div class="ctxitem" data-cmd="open">Open</div>
-    <div class="ctxitem" data-cmd="copyPath">Copy path</div>
-    <div class="ctxitem" data-cmd="copySnippet">Copy snippet</div>
+    <div class="ctxitem" data-cmd="open" data-i18n="cs.ctxOpen">Open</div>
+    <div class="ctxitem" data-cmd="copyPath" data-i18n="cs.ctxCopyPath">Copy path</div>
+    <div class="ctxitem" data-cmd="copySnippet" data-i18n="cs.ctxCopySnippet">Copy snippet</div>
   </div>
 
+  <script src="js/i18n.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/cscope.js"></script>
 </body>
 </html>

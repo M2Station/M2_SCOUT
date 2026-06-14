@@ -6,12 +6,14 @@
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
   <title>M2_SCOUT</title>
   <link rel="stylesheet" href="css/style.css" />
+  <script src="js/themes.js"></script>
 </head>
 <body>
   <!-- Tab bar -->
   <div class="tabbar" id="tabbar">
     <div class="tabs" id="tabs"></div>
-    <button class="tab-add" id="tabAdd" title="New tab (Ctrl+T)">+</button>
+    <button class="tab-add" id="tabAdd" data-i18n-title="tab.new" title="New tab (Ctrl+T)">+</button>
+    <button class="tab-settings" id="btnSettings" data-i18n-title="settings.open" title="Settings">⚙</button>
   </div>
 
   <!-- Tab contents are injected here -->
@@ -22,72 +24,72 @@
     <div class="tab-content">
       <div class="form">
         <div class="grid">
-          <label>rg.exe</label>
+          <label data-i18n="form.rgExe">rg.exe</label>
           <input type="text" data-field="rgExe" class="wide" />
-          <button data-action="browseRg" class="btn">Browse rg.exe</button>
+          <button data-action="browseRg" class="btn" data-i18n="form.browseRg">Browse rg.exe</button>
           <span class="cpu" data-el="cpu">CPU: --%</span>
 
-          <label>fd.exe</label>
+          <label data-i18n="form.fdExe">fd.exe</label>
           <input type="text" data-field="fdExe" class="wide" />
-          <button data-action="browseFd" class="btn">Browse fd.exe</button>
+          <button data-action="browseFd" class="btn" data-i18n="form.browseFd">Browse fd.exe</button>
           <span></span>
 
-          <label>Folder</label>
+          <label data-i18n="form.folder">Folder</label>
           <input type="text" data-field="folder" class="wide" />
-          <button data-action="selectFolder" class="btn btn-green">Select Folds</button>
+          <button data-action="selectFolder" class="btn btn-green" data-i18n="form.selectFolder">Select Folds</button>
           <span></span>
 
-          <label>Filter</label>
+          <label data-i18n="form.filter">Filter</label>
           <input type="text" data-field="filter" data-enter="search" />
-          <span class="hintcell">e.g. *.c *.h  (blank or *.* = all)</span>
+          <span class="hintcell" data-i18n="form.filterHint">e.g. *.c *.h  (blank or *.* = all)</span>
           <span></span>
 
-          <label>Exclude Dirs (manual)</label>
+          <label data-i18n="form.excludeDirs">Exclude Dirs (manual)</label>
           <input type="text" data-field="excludeDirs" class="wide" />
           <span></span>
           <span></span>
 
-          <label>Exclude Files (manual)</label>
+          <label data-i18n="form.excludeFiles">Exclude Files (manual)</label>
           <input type="text" data-field="excludeFiles" class="wide" />
           <span></span>
           <span></span>
 
-          <label>Exclude Group Keys</label>
+          <label data-i18n="form.excludeGroupKeys">Exclude Group Keys</label>
           <input type="text" data-field="excludeGroupKeys" class="wide" />
           <span class="btnbar">
-            <button data-action="reloadGroups" class="btn">Reload exclude groups</button>
-            <button data-action="reloadHl" class="btn">Reload HL</button>
+            <button data-action="reloadGroups" class="btn" data-i18n="form.reloadGroups">Reload exclude groups</button>
+            <button data-action="reloadHl" class="btn" data-i18n="form.reloadHl">Reload HL</button>
           </span>
           <span></span>
 
-          <label>Keywords</label>
+          <label data-i18n="form.keywords">Keywords</label>
           <input type="text" data-field="keywords" class="wide bold" data-enter="search" />
           <span class="ctrl">
             <span class="ctrl-row">
               <span class="mode">
-                <span>Mode</span>
-                <label><input type="radio" data-mode="OR" value="OR" /> OR</label>
-                <label><input type="radio" data-mode="AND" value="AND" /> AND</label>
+                <span data-i18n="form.mode">Mode</span>
+                <label><input type="radio" data-mode="OR" value="OR" /> <span data-i18n="form.or">OR</span></label>
+                <label><input type="radio" data-mode="AND" value="AND" /> <span data-i18n="form.and">AND</span></label>
               </span>
-              <label class="chk"><input type="checkbox" data-field="caseSensitive" /> Case Sensitive</label>
-              <button data-action="searchInFiles" class="btn btn-blue">SEARCH_IN_FILES</button>
-              <button data-action="searchFilename" class="btn btn-purple">SEARCH_FILENAME</button>
-              <button data-action="stop" class="btn btn-red">STOP</button>
+              <label class="chk"><input type="checkbox" data-field="caseSensitive" /> <span data-i18n="form.caseSensitive">Case Sensitive</span></label>
+              <button data-action="searchInFiles" class="btn btn-blue" data-i18n="action.searchInFiles">SEARCH_IN_FILES</button>
+              <button data-action="searchFilename" class="btn btn-purple" data-i18n="action.searchFilename">SEARCH_FILENAME</button>
+              <button data-action="stop" class="btn btn-red" data-i18n="action.stop">STOP</button>
             </span>
             <span class="ctrl-row">
-              <button data-action="genCscope" class="btn">GEN_cscope.files</button>
-              <button data-action="cscope" class="btn">CSCOPE</button>
-              <label class="chk"><input type="checkbox" data-field="respectIgnore" /> Respect (.gitignore/.ignore/.rgignore)</label>
+              <button data-action="genCscope" class="btn" data-i18n="action.genCscope">GEN_cscope.files</button>
+              <button data-action="cscope" class="btn" data-i18n="action.cscope">CSCOPE</button>
+              <label class="chk"><input type="checkbox" data-field="respectIgnore" /> <span data-i18n="form.respectIgnore">Respect (.gitignore/.ignore/.rgignore)</span></label>
             </span>
           </span>
           <span></span>
 
-          <label>Editor CMD</label>
+          <label data-i18n="form.editorCmd">Editor CMD</label>
           <input type="text" data-field="editorCmd" class="wide" />
           <span></span>
           <span></span>
 
-          <label>Editor ARGS (template)</label>
+          <label data-i18n="form.editorArgs">Editor ARGS (template)</label>
           <input type="text" data-field="editorArgs" class="wide" />
           <span></span>
           <span></span>
@@ -99,19 +101,19 @@
         <div class="pane pane-files">
           <div class="files-header">
             <span class="files-count" data-el="filesCount">Files: 0</span>
-            <span class="muted">HL:</span>
+            <span class="muted" data-i18n="files.hl">HL:</span>
             <input type="text" data-el="filesHl" class="small" />
-            <span class="muted">Filter:</span>
+            <span class="muted" data-i18n="files.filter">Filter:</span>
             <input type="text" data-el="filesFilter" class="small" />
-            <button data-action="clearFilesHl" class="btn btn-mini" title="Clear">✕</button>
-            <span class="hint">F1:copy  F2:HL  F3:Dim  F4:Clr</span>
+            <button data-action="clearFilesHl" class="btn btn-mini" data-i18n-title="files.clear" title="Clear">✕</button>
+            <span class="hint" data-i18n="files.hint">F1:copy  F2:HL  F3:Dim  F4:Clr</span>
           </div>
           <div class="fileslist" data-el="fileslist" tabindex="0"></div>
         </div>
         <div class="splitter" data-el="splitter"></div>
         <div class="pane pane-preview">
           <div class="preview-header">
-            <span class="preview-file" data-el="previewFile">Preview</span>
+            <span class="preview-file" data-el="previewFile" data-i18n="preview.title">Preview</span>
             <span class="hint" data-el="previewHint"></span>
           </div>
           <pre class="preview" data-el="preview" tabindex="0"></pre>
@@ -120,15 +122,15 @@
 
       <!-- Status bar -->
       <div class="statusbar">
-        <span class="status" data-el="status">Ready.</span>
+        <span class="status" data-el="status" data-i18n="status.ready">Ready.</span>
         <span class="status-match" data-el="statusMatch"></span>
       </div>
 
       <!-- DEBUG -->
       <div class="debug-outer">
         <div class="debug-bar">
-          <button data-action="toggleDebug" class="btn btn-mini" data-el="debugToggle">▼ DEBUG</button>
-          <button data-action="clearDebug" class="btn btn-mini">Clear</button>
+          <button data-action="toggleDebug" class="btn btn-mini" data-el="debugToggle" data-i18n="debug.toggleShown">▼ DEBUG</button>
+          <button data-action="clearDebug" class="btn btn-mini" data-i18n="debug.clear">Clear</button>
         </div>
         <pre class="debug" data-el="debug"></pre>
       </div>
@@ -137,11 +139,13 @@
 
   <!-- Context menu for files list -->
   <div class="ctxmenu" id="filesCtxMenu" hidden>
-    <div class="ctxitem" data-cmd="openExplorer">Open in Explorer</div>
-    <div class="ctxitem" data-cmd="copyPath">Copy path</div>
-    <div class="ctxitem" data-cmd="copyRelPath">Copy relative path</div>
+    <div class="ctxitem" data-cmd="openExplorer" data-i18n="ctx.openExplorer">Open in Explorer</div>
+    <div class="ctxitem" data-cmd="copyPath" data-i18n="ctx.copyPath">Copy path</div>
+    <div class="ctxitem" data-cmd="copyRelPath" data-i18n="ctx.copyRelPath">Copy relative path</div>
   </div>
 
+  <script src="js/i18n.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/highlight.js"></script>
   <script src="js/renderer.js"></script>
 </body>
