@@ -167,10 +167,76 @@ body { display: flex; flex-direction: column; }
 }
 .btn:hover { background: var(--btn-bg-hover); }
 .btn:disabled { opacity: 0.5; cursor: default; }
-.btn-green { background: var(--green); color: #fff; border-color: var(--green); }
-.btn-blue { background: var(--blue); color: #fff; border-color: var(--blue); }
-.btn-purple { background: var(--purple); color: #fff; border-color: var(--purple); }
-.btn-red { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* Coloured action buttons (Search in files / Search filename / Stop, etc.).
+   Each class only declares its base hue via --c; the gradient, inner highlight
+   and drop shadow are shared and built with color-mix() so they adapt to every
+   theme automatically. This gives a more tactile, premium look than a flat
+   single colour and fixes the old issue where .btn:hover turned them grey. */
+.btn-green,
+.btn-blue,
+.btn-purple,
+.btn-red {
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--c) 62%, #000);
+  background-color: var(--c);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--c) 80%, #fff) 0%,
+    var(--c) 46%,
+    color-mix(in srgb, var(--c) 84%, #000) 100%
+  );
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  transition: filter 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;
+}
+.btn-green { --c: var(--green); }
+.btn-blue { --c: var(--blue); }
+.btn-purple { --c: var(--purple); }
+.btn-red { --c: var(--red); }
+
+/* Brighten and lift on hover (overrides the neutral .btn:hover). */
+.btn-green:hover,
+.btn-blue:hover,
+.btn-purple:hover,
+.btn-red:hover {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--c) 70%, #fff) 0%,
+    color-mix(in srgb, var(--c) 94%, #fff) 46%,
+    color-mix(in srgb, var(--c) 78%, #000) 100%
+  );
+  box-shadow:
+    0 2px 7px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  transform: translateY(-1px);
+}
+
+/* Press down on active. */
+.btn-green:active,
+.btn-blue:active,
+.btn-purple:active,
+.btn-red:active {
+  transform: translateY(0);
+  filter: brightness(0.96);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.btn-green:disabled,
+.btn-blue:disabled,
+.btn-purple:disabled,
+.btn-red:disabled {
+  filter: saturate(0.45) brightness(0.92);
+  box-shadow: none;
+  transform: none;
+}
 .btn-mini { padding: 1px 6px; font-size: 11px; }
 .btnbar { display: flex; gap: 8px; }
 
