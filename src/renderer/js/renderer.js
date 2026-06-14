@@ -676,12 +676,9 @@ class Tab {
         const nm = document.createElement('span');
         nm.className = 'tree-name';
         nm.textContent = name;
-        const badge = document.createElement('span');
-        badge.className = 'tree-badge';
-        badge.textContent = String(child.count);
+        // Folder rows show no match-count badge — only file leaves report counts.
         frow.appendChild(tw);
         frow.appendChild(nm);
-        frow.appendChild(badge);
         frow.addEventListener('click', () => self._toggleFolder(child.key));
         frag.appendChild(frow);
 
@@ -803,8 +800,25 @@ class Tab {
     else if (e.key === 'F2') { e.preventDefault(); this.promptFilesHl(); }
     else if (e.key === 'F3') { e.preventDefault(); this.promptFilesFilter(); }
     else if (e.key === 'F4') { e.preventDefault(); this.clearFilesHlFilter(); }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); this.selectFile(Math.min(this.files.length - 1, (this.selIdx < 0 ? 0 : this.selIdx + 1))); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); this.selectFile(Math.max(0, (this.selIdx < 0 ? 0 : this.selIdx - 1))); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); this._navFiles(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this._navFiles(-1); }
+  }
+
+  // Move the selection to the next/previous file row in *visual* (DOM) order.
+  // Keyboard nav must follow what the user sees. In tree view the rows are
+  // grouped by folder and sorted by name, so stepping through `this.files` by
+  // array index made the highlight jump around and appear to skip files. By
+  // walking the rendered `.file-row` elements we keep Up/Down in sync with the
+  // on-screen order and naturally skip rows hidden inside collapsed folders.
+  _navFiles(dir) {
+    const fl = this.els.fileslist;
+    if (!fl) return;
+    const rows = [...fl.querySelectorAll('.file-row')].filter((r) => r.offsetParent !== null);
+    if (!rows.length) return;
+    let pos = rows.findIndex((r) => Number(r.dataset.idx) === this.selIdx);
+    if (pos < 0) pos = dir > 0 ? -1 : 0; // nothing selected yet -> first visible row
+    const next = Math.max(0, Math.min(rows.length - 1, pos + dir));
+    this.selectFile(Number(rows[next].dataset.idx));
   }
 
   async copyAllFiles() {

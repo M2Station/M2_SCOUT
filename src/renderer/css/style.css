@@ -360,11 +360,29 @@ body { display: flex; flex-direction: column; }
 }
 .tree-folderrow { cursor: pointer; }
 .tree-folderrow:hover { background: var(--row-hover); }
+/* Folder names are structural scaffolding -> de-emphasize so the selectable
+   file leaves visually dominate. */
+.tree-folderrow .tree-name { color: var(--muted); }
 .file-row.tree-file {
   display: flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+  cursor: pointer; /* only files are selectable / previewable */
+}
+/* Make file leaves easy to pick out from folders: a leading accent dot marks
+   "this row is a selectable file", and the name is bold in full-contrast text. */
+.file-row.tree-file::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.file-row.tree-file .tree-name {
+  font-weight: 700;
+  color: var(--text);
 }
 .tw {
   flex: 0 0 auto;
