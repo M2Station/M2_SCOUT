@@ -9,6 +9,8 @@ const path = require('path');
 const {
   ipcMain, dialog, shell, BrowserWindow,
 } = require('electron');
+const os = require('os');
+const { execFile } = require('child_process');
 
 const {
   DEBUG, UIConfig, EditorConfig, ToolConfig, PreviewConfig, HighlightConfig, LiveUpdateConfig, SearchConfig,
@@ -30,6 +32,81 @@ const toolUpdate = require('./toolUpdate');
 const cscope = require('./cscope');
 
 const activeSessions = new Map(); // sessionId -> session (rg or fd)
+
+// ---- rg/fd child-process CPU sampler ----
+// We surface the CPU usage of the rg.exe / fd.exe child processes that actually
+// run the search, NOT the app itself. There is no Node API for a child's CPU,
+// and `pidusage` shells out to `wmic`, which Windows 11 has removed (spawn wmic
+// ENOENT). So we poll the live child PIDs with a single PowerShell `Get-Process`
+// call per tick, read each process's accumulated CPU-seconds (.CPU), and derive
+// a percent from the delta over the elapsed wall time, normalized by logical
+// core count (Task-Manager style: 100% = all cores busy). Sampling only runs
+// while a search is active; idle ticks spawn nothing.
+const CPU_CORES = Math.max(1, os.cpus().length);
+const CPU_IS_WIN = process.platform === 'win32';
+let cpuPrev = new Map(); // pid -> CPU-seconds at the previous sample
+let cpuPrevTs = 0; // timestamp (ms) of the previous sample
+let cpuBusy = false; // a PowerShell sample is currently in flight
+let cpuTimer = null;
+
+function activePidsBySession() {
+  const map = new Map(); // sessionId -> [pid, ...]
+  for (const [sid, session] of activeSessions) {
+    if (!session || !session.children) continue;
+    const pids = [];
+    for (const child of session.children) {
+      if (child && typeof child.pid === 'number') pids.push(child.pid);
+    }
+    if (pids.length) map.set(sid, pids);
+  }
+  return map;
+}
+
+function sampleChildCpu() {
+  if (!CPU_IS_WIN || cpuBusy) return;
+  const perSession = activePidsBySession();
+  if (perSession.size === 0) { cpuPrev = new Map(); cpuPrevTs = 0; return; }
+  const allPids = [...new Set([].concat(...perSession.values()))];
+  const idList = allPids.join(',');
+  const psCmd = `Get-Process -Id ${idList} -ErrorAction SilentlyContinue | ForEach-Object { if ($_.CPU -ne $null) { $_.Id.ToString() + ':' + $_.CPU.ToString([System.Globalization.CultureInfo]::InvariantCulture) } }`;
+  cpuBusy = true;
+  execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', psCmd], { windowsHide: true, timeout: 4000 }, (err, stdout) => {
+    cpuBusy = false;
+    const now = Date.now();
+    const cur = new Map();
+    if (!err && stdout) {
+      for (const line of String(stdout).split(/\r?\n/)) {
+        const m = line.trim().match(/^(\d+):([\d.]+)$/);
+        if (m) cur.set(Number(m[1]), parseFloat(m[2]));
+      }
+    }
+    const elapsed = cpuPrevTs ? (now - cpuPrevTs) / 1000 : 0;
+    for (const [sid, pids] of perSession) {
+      const session = activeSessions.get(sid);
+      if (!session || typeof session.emit !== 'function') continue;
+      let percent = 0;
+      if (elapsed > 0) {
+        let deltaSec = 0;
+        for (const pid of pids) {
+          const nowC = cur.get(pid);
+          const prevC = cpuPrev.get(pid);
+          if (typeof nowC === 'number' && typeof prevC === 'number' && nowC >= prevC) deltaSec += nowC - prevC;
+        }
+        percent = Math.round((deltaSec / (elapsed * CPU_CORES)) * 100);
+        if (percent < 0) percent = 0;
+        if (percent > 100) percent = 100;
+      }
+      session.emit('cpu', { percent });
+    }
+    cpuPrev = cur;
+    cpuPrevTs = now;
+  });
+}
+
+function startCpuSampler() {
+  if (cpuTimer || !CPU_IS_WIN) return;
+  cpuTimer = setInterval(sampleChildCpu, 800);
+}
 
 function validateExe(exe, name) {
   const raw = (exe || '').trim();
@@ -72,6 +149,8 @@ function buildContext(raw) {
 }
 
 function registerIpc({ openCscopeWindow, getInitialFolder }) {
+  startCpuSampler();
+
   // ---- config & ini ----
   ipcMain.handle('config:get', () => ({
     DEBUG,
