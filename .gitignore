@@ -25,5 +25,5 @@ Thumbs.db
 *~
 
 # NOTE: TOOLS/ (rg.exe / fd.exe / cscope.exe + ZIP archives) is committed on purpose.
-# NOTE: M2_SEEK.ini is committed as a sanitized template. Local runtime changes are
-#       kept out of git via: git update-index --skip-worktree M2_SEEK.ini
+# NOTE: M2_SCOUT.ini is committed as a sanitized template. Local runtime changes are
+#       kept out of git via: git update-index --skip-worktree M2_SCOUT.ini

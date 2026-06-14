@@ -357,3 +357,74 @@ body { display: flex; flex-direction: column; }
 }
 .settings-close { align-self: flex-end; margin-top: 4px; }
 
+/* ---------- Exclude-folders picker popup ---------- */
+.exfolder-panel {
+  min-width: 520px;
+  max-width: 80vw;
+  max-height: 80vh;
+}
+.exfolder-filter {
+  font-family: var(--font-code);
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--input-bg);
+  color: var(--text);
+}
+.exfolder-list {
+  flex: 1;
+  min-height: 120px;
+  max-height: 50vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--panel);
+}
+.exfolder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 12px;
+}
+.exfolder-row:hover { background: var(--row-hover); }
+.exfolder-cb { margin: 0; }
+.exfolder-key {
+  font-family: var(--font-code);
+  font-weight: 700;
+  min-width: 130px;
+  color: var(--text);
+}
+.exfolder-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  color: #fff;
+  white-space: nowrap;
+}
+.exfolder-tag.tag-dir { background: var(--blue); }
+.exfolder-tag.tag-file { background: var(--purple); }
+.exfolder-val {
+  font-family: var(--font-code);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exfolder-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+}
+.exfolder-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.exfolder-count { font-size: 12px; color: var(--muted); }
+
+

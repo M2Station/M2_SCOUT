@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('m2scout', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   loadIni: () => ipcRenderer.invoke('ini:load'),
   saveIni: (data) => ipcRenderer.invoke('ini:save', data),
+  // Synchronous save: blocks until the file is written. Used on window close
+  // so the settings are flushed to disk before the renderer is destroyed.
+  saveIniSync: (data) => ipcRenderer.sendSync('ini:saveSync', data),
   loadExcludeGroups: () => ipcRenderer.invoke('excludeGroups:load'),
   loadHl: () => ipcRenderer.invoke('hl:load'),
   reloadHl: () => ipcRenderer.invoke('hl:reload'),
@@ -81,6 +84,13 @@ contextBridge.exposeInMainWorld('m2scout', {
     const listener = (_e, payload) => cb(payload);
     ipcRenderer.on('app:cliFolder', listener);
     return () => ipcRenderer.removeListener('app:cliFolder', listener);
+  },
+  // Main process asks the renderer to persist settings synchronously right
+  // before the window closes (reliable replacement for window `beforeunload`).
+  onFlushSettings: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('app:flushSettings', listener);
+    return () => ipcRenderer.removeListener('app:flushSettings', listener);
   },
 
   // path helpers

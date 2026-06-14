@@ -26,15 +26,17 @@ const manager = {
     this.seq += 1;
     const id = `tab-${this.seq}`;
     const title = isDefault ? 'TAB BASE' : `TAB ${this.tabs.length + 1}`;
+    // Source to clone from when opening a new tab: the current LAST tab (the
+    // "previous" tab), or the base tab if none exists yet. Captured BEFORE the
+    // new tab is pushed.
+    const source = this.tabs.length ? this.tabs[this.tabs.length - 1] : null;
     const tab = new Tab(id, title, isDefault);
     this.tabs.push(tab);
     this.sessionMap.set(id, tab);
     this.renderTabBar();
     this.activate(tab);
     if (!isDefault) {
-      const base = this.tabs[0];
-      tab.setVal('editorCmd', base.val('editorCmd'));
-      tab.setVal('editorArgs', base.val('editorArgs'));
+      tab.copyFrom(source || this.tabs[0]);
     }
     tab.focusKeywords();
     return tab;
@@ -225,8 +227,7 @@ class Tab {
     act('browseRg', () => this._browse('rgExe', 'rg'));
     act('browseFd', () => this._browse('fdExe', 'fd'));
     act('selectFolder', () => this._selectFolder());
-    act('reloadGroups', () => this._reloadGroups());
-    act('reloadHl', () => this._reloadHl());
+    act('pickExcludeFolders', () => this._openExcludePicker());
     act('searchInFiles', () => this.search());
     act('searchFilename', () => this.searchFilename());
     act('stop', () => this.stop());
@@ -241,12 +242,15 @@ class Tab {
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.search(); } });
     });
 
-    // INI save on change (default tab only)
-    Object.values(this.fields).forEach((el) => {
-      el.addEventListener('input', () => this.scheduleSave());
-      el.addEventListener('change', () => this.scheduleSave());
-    });
-    this.modeRadios.forEach((r) => r.addEventListener('change', () => this.scheduleSave()));
+    // INI save on change — ONLY the base (default) tab persists to the INI.
+    // Other tabs never save, so we don't even attach the listeners for them.
+    if (this.isDefault) {
+      Object.values(this.fields).forEach((el) => {
+        el.addEventListener('input', () => this.scheduleSave());
+        el.addEventListener('change', () => this.scheduleSave());
+      });
+      this.modeRadios.forEach((r) => r.addEventListener('change', () => this.scheduleSave()));
+    }
 
     // files list
     const fl = this.els.fileslist;
@@ -289,6 +293,23 @@ class Tab {
   mode() { const r = [...this.modeRadios].find((x) => x.checked); return r ? r.value : 'OR'; }
   setMode(m) { this.modeRadios.forEach((r) => { r.checked = (r.value === m); }); }
 
+  // Clone every form field from another tab (used when opening a new tab so it
+  // starts as a copy of the previous/base tab). Writes via .value/.checked which
+  // do NOT fire input events, so this never triggers an INI save.
+  copyFrom(src) {
+    if (!src || src === this) return;
+    const TEXT = ['rgExe', 'fdExe', 'folder', 'filter', 'excludeDirs',
+      'excludeFiles', 'excludeGroupKeys', 'keywords', 'editorCmd', 'editorArgs'];
+    for (const name of TEXT) this.setVal(name, src.val(name));
+    if (this.fields.caseSensitive && src.fields.caseSensitive) {
+      this.fields.caseSensitive.checked = src.fields.caseSensitive.checked;
+    }
+    if (this.fields.respectIgnore && src.fields.respectIgnore) {
+      this.fields.respectIgnore.checked = src.fields.respectIgnore.checked;
+    }
+    this.setMode(src.mode());
+  }
+
   // ---------- INI ----------
   loadFromIni(ini) {
     const g = (k) => ini[k];
@@ -314,26 +335,37 @@ class Tab {
     this.saveTimer = setTimeout(() => this.saveToIni(), 300);
   }
 
-  saveToIni() {
+  saveToIni(sync) {
     if (!this.isDefault) return;
-    const d = { ...baseIniRaw };
-    d.rg_exe = this.val('rgExe').trim() || CONFIG.defaults.rgExe;
-    d.fd_exe = this.val('fdExe').trim() || CONFIG.defaults.fdExe;
-    const folder = this.val('folder').trim();
-    if (folder) d.last_folder = folder;
-    d.filter = this.val('filter').trim() || '*.*';
-    d.exclude_dirs = this.val('excludeDirs').trim();
-    d.exclude_files = this.val('excludeFiles').trim();
-    d.exclude_group_keys = this.val('excludeGroupKeys').trim();
-    d.keywords = this.val('keywords').trim();
-    d.keyword = d.keywords;
-    d.kw_mode = this.mode();
-    d.case_sensitive = this.checked('caseSensitive') ? 'true' : 'false';
-    d.respect_ignore_files = this.checked('respectIgnore') ? 'true' : 'false';
-    d.editor_cmd = this.val('editorCmd').trim() || CONFIG.defaults.editorCmd;
-    d.editor_args = this.val('editorArgs').trim() || CONFIG.defaults.editorArgs;
+    // Build a clean, canonical [search] payload. We intentionally do NOT carry
+    // over unknown/legacy keys (e.g. a stale singular `keyword`, `skip_a`, or a
+    // redundant `folder`), so the INI stays tidy with no duplicates.
+    const d = {
+      rg_exe: this.val('rgExe').trim() || CONFIG.defaults.rgExe,
+      fd_exe: this.val('fdExe').trim() || CONFIG.defaults.fdExe,
+      last_folder: this.val('folder').trim(),
+      filter: this.val('filter').trim() || '*.*',
+      exclude_dirs: this.val('excludeDirs').trim(),
+      exclude_files: this.val('excludeFiles').trim(),
+      exclude_group_keys: this.val('excludeGroupKeys').trim(),
+      keywords: this.val('keywords').trim(),
+      kw_mode: this.mode(),
+      case_sensitive: this.checked('caseSensitive') ? 'true' : 'false',
+      respect_ignore_files: this.checked('respectIgnore') ? 'true' : 'false',
+      editor_cmd: this.val('editorCmd').trim() || CONFIG.defaults.editorCmd,
+      editor_args: this.val('editorArgs').trim() || CONFIG.defaults.editorArgs,
+    };
     baseIniRaw = d;
-    S.saveIni(d);
+    if (sync && S.saveIniSync) S.saveIniSync(d);
+    else S.saveIni(d);
+  }
+
+  // Cancel any pending debounce and write the current settings immediately
+  // (synchronously). Called on window close so nothing is lost.
+  flushSave() {
+    if (!this.isDefault) return;
+    if (this.saveTimer) { clearTimeout(this.saveTimer); this.saveTimer = null; }
+    this.saveToIni(true);
   }
 
   // ---------- browse / folder ----------
@@ -346,14 +378,29 @@ class Tab {
     if (p) { this.setVal('folder', p); this.scheduleSave(); }
   }
 
-  async _reloadGroups() {
-    await S.loadExcludeGroups();
-    this.debug('[Reload exclude groups] reloaded from INI');
-  }
-  async _reloadHl() {
-    HL_RULES = await S.reloadHl();
-    this.debug(`[Reload HL] sections=${Object.keys(HL_RULES).join(', ')}`);
-    if (this.currentFile) this.scheduleHighlight();
+  // Open the exclude-folders picker: reads M2_SCOUT_EXCLUDE_GROUPS.ini fresh,
+  // lists its groups as checkboxes, and writes the ticked group keys into the
+  // Exclude Group Keys field (resolved to skip patterns at search time).
+  async _openExcludePicker() {
+    if (!window.M2ExcludePicker) return;
+    let groups = {};
+    try {
+      groups = await S.loadExcludeGroups();
+    } catch (_e) {
+      groups = {};
+    }
+    const selectedKeys = (this.val('excludeGroupKeys') || '')
+      .split(/[;,\s]+/)
+      .filter(Boolean);
+    window.M2ExcludePicker.open({
+      groups: groups || {},
+      selectedKeys,
+      onApply: (keys) => {
+        this.setVal('excludeGroupKeys', keys.join(' '));
+        this.scheduleSave();
+        this.debug(`[Exclude folders] applied ${keys.length} group key(s): ${keys.join(' ')}`);
+      },
+    });
   }
 
   // ---------- search ----------
@@ -394,7 +441,6 @@ class Tab {
 
   async search() {
     if (this.running) return;
-    this.saveToIni();
     this._beginSearch(T('status.searching'));
     const r = await S.startSearch(this._searchParams());
     if (!r.ok) { this._failStart(r.error); }
@@ -402,7 +448,6 @@ class Tab {
 
   async searchFilename() {
     if (this.running) return;
-    this.saveToIni();
     this._beginSearch(T('status.searchingFilenames'));
     const r = await S.startFilenameSearch(this._searchParams());
     if (!r.ok) { this._failStart(r.error); }
@@ -736,8 +781,8 @@ class Tab {
   }
 
   // ---------- focus ----------
-  focusKeywords() { this.saveToIni(); const el = this.fields.keywords; el.focus(); el.select(); }
-  focusFilter() { this.saveToIni(); const el = this.fields.filter; el.focus(); el.select(); }
+  focusKeywords() { const el = this.fields.keywords; el.focus(); el.select(); }
+  focusFilter() { const el = this.fields.filter; el.focus(); el.select(); }
   focusFiles() {
     const fl = this.els.fileslist;
     fl.focus();
@@ -786,6 +831,15 @@ window.addEventListener('keydown', (e) => {
   else if (e.ctrlKey && (e.key === 't' || e.key === 'T')) { e.preventDefault(); manager.add(false); }
   else if (e.ctrlKey && (e.key === 'w' || e.key === 'W')) { e.preventDefault(); manager.closeCurrent(); }
   else if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); tab.focusFiles(); }
+});
+
+// Persist the base tab's settings to INI right before the window closes. The
+// main process intercepts the window close and asks us to flush here; we write
+// synchronously (the write completes before we return), then close for real.
+S.onFlushSettings(() => {
+  const base = manager.tabs[0];
+  if (base) base.flushSave();
+  window.close();
 });
 
 // ============================================================

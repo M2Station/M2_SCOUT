@@ -9,11 +9,17 @@ const fs = require('fs');
 const { app, BrowserWindow } = require('electron');
 const { registerIpc } = require('./ipc');
 const { parentToolDir, appDir } = require('./paths');
+const { ensureFontsInstalled } = require('./fonts');
 
 let mainWindow = null;
 
 function findIcon() {
   const candidates = [
+    // Primary location: LOGO/M2_SCOUT.ico next to the app.
+    path.join(appDir(), 'LOGO', 'M2_SCOUT.ico'),
+    path.join(parentToolDir(), 'LOGO', 'M2_SCOUT.ico'),
+    // Backward-compatible fallbacks.
+    path.join(appDir(), 'M2_SCOUT.ico'),
     path.join(appDir(), 'M2_LOGO.ico'),
     path.join(parentToolDir(), 'M2_LOGO.ico'),
   ];
@@ -42,6 +48,24 @@ function createMainWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+
+  // Persist settings before the window is destroyed. The browser `beforeunload`
+  // event is unreliable for this in Electron, so we intercept the window
+  // `close` here: ask the renderer to flush its settings synchronously, then
+  // let the close proceed. A short timeout guarantees we never hang.
+  let settingsFlushed = false;
+  mainWindow.on('close', (e) => {
+    if (settingsFlushed) return;
+    e.preventDefault();
+    settingsFlushed = true;
+    if (mainWindow && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send('app:flushSettings');
+    }
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.destroy();
+    }, 800);
+  });
+
   return mainWindow;
 }
 
@@ -74,6 +98,19 @@ function openCscopeWindow(ctx) {
 }
 
 app.whenReady().then(() => {
+  // Make bundled fonts available to the OS so the CSS font stacks resolve
+  // (e.g. "Source Code Pro"). Done before the window is created so the fresh
+  // renderer process can enumerate the newly installed font this session.
+  try {
+    const fontResults = ensureFontsInstalled();
+    const installed = fontResults.filter((r) => r.action === 'installed');
+    const failed = fontResults.filter((r) => r.action === 'failed');
+    if (installed.length) console.log('[fonts] installed:', installed.map((r) => r.file).join(', '));
+    if (failed.length) console.warn('[fonts] failed:', failed.map((r) => `${r.file} (${r.error})`).join(', '));
+  } catch (e) {
+    console.warn('[fonts] ensure failed:', e.message);
+  }
+
   registerIpc({ openCscopeWindow });
   createMainWindow();
 

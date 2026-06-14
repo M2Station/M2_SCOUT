@@ -93,6 +93,16 @@ function registerIpc({ openCscopeWindow }) {
     saveIniRaw(data || {});
     return { ok: true };
   });
+  // Synchronous variant for save-on-close: the renderer blocks until the file
+  // is written, guaranteeing the settings are persisted before the window dies.
+  ipcMain.on('ini:saveSync', (e, data) => {
+    try {
+      saveIniRaw(data || {});
+      e.returnValue = true;
+    } catch (_err) {
+      e.returnValue = false;
+    }
+  });
   ipcMain.handle('excludeGroups:load', () => {
     ensureExcludeGroupIniExists();
     return loadExcludeGroupIni();

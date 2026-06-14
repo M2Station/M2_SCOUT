@@ -54,6 +54,11 @@ function hlIniPath() {
   return path.join(appDir(), AppConfig.HL_INI);
 }
 
+// Directory of bundled fonts (FONTS/) shipped next to the app.
+function fontsDir() {
+  return path.join(appDir(), 'FONTS');
+}
+
 // Resolve an executable name/path to something spawnable.
 // If it is an absolute existing file, use it. If it is a bare name like
 // "rg.exe", try: M2_SCOUT/TOOLS dir, M2_SCOUT dir, parent (M2_SEEK) dir, else
@@ -85,5 +90,6 @@ module.exports = {
   iniPath,
   excludeGroupIniPath,
   hlIniPath,
+  fontsDir,
   resolveExe,
 };

@@ -8,9 +8,9 @@
 const DEBUG = true;
 
 const AppConfig = {
-  INI_FILENAME: 'M2_SEEK.ini',
-  EXCLUDE_GROUP_INI: 'M2_SEEK_EXCLUDE_GROUPS.ini',
-  HL_INI: 'M2_SEEK_HL.ini',
+  INI_FILENAME: 'M2_SCOUT.ini',
+  EXCLUDE_GROUP_INI: 'M2_SCOUT_EXCLUDE_GROUPS.ini',
+  HL_INI: 'M2_SCOUT_HL.ini',
 };
 
 const UIConfig = {

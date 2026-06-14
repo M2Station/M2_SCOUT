@@ -44,22 +44,14 @@
           <span class="hintcell" data-i18n="form.filterHint">e.g. *.c *.h  (blank or *.* = all)</span>
           <span></span>
 
-          <label data-i18n="form.excludeDirs">Exclude Dirs (manual)</label>
-          <input type="text" data-field="excludeDirs" class="wide" />
-          <span></span>
+          <label data-i18n="form.excludeGroupKeys">Exclude Group Keys</label>
+          <input type="text" data-field="excludeGroupKeys" class="wide" />
+          <button data-action="pickExcludeFolders" class="btn" data-i18n="exfolder.button">Exclude Folders…</button>
           <span></span>
 
           <label data-i18n="form.excludeFiles">Exclude Files (manual)</label>
           <input type="text" data-field="excludeFiles" class="wide" />
           <span></span>
-          <span></span>
-
-          <label data-i18n="form.excludeGroupKeys">Exclude Group Keys</label>
-          <input type="text" data-field="excludeGroupKeys" class="wide" />
-          <span class="btnbar">
-            <button data-action="reloadGroups" class="btn" data-i18n="form.reloadGroups">Reload exclude groups</button>
-            <button data-action="reloadHl" class="btn" data-i18n="form.reloadHl">Reload HL</button>
-          </span>
           <span></span>
 
           <label data-i18n="form.keywords">Keywords</label>
@@ -146,6 +138,7 @@
 
   <script src="js/i18n.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/excludePicker.js"></script>
   <script src="js/highlight.js"></script>
   <script src="js/renderer.js"></script>
 </body>

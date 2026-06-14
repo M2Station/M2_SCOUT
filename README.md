@@ -5,8 +5,8 @@ on top of [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`),
 [fd](https://github.com/sharkdp/fd), and [cscope](https://cscope.sourceforge.net/).
 
 It is a faithful re-implementation of the original Python/Tkinter app
-(`../M2_SEEK.py`). All features are aligned with M2 SEEK and it reads/writes the
-**same INI files** (`M2_SEEK.ini`, `M2_SEEK_EXCLUDE_GROUPS.ini`, `M2_SEEK_HL.ini`).
+(`../M2_SEEK.py`). All features are aligned with M2 SEEK. Settings are stored in
+its own **INI files** (`M2_SCOUT.ini`, `M2_SCOUT_EXCLUDE_GROUPS.ini`, `M2_SCOUT_HL.ini`).
 
 ---
 
@@ -87,9 +87,9 @@ So out of the box it reuses the binaries already present in the M2_SEEK repo.
 M2_SCOUT/
 ├─ package.json
 ├─ M2_SCOUT.cmd               launcher (npm install + start)
-├─ M2_SEEK.ini                settings (shared format with M2 SEEK)
-├─ M2_SEEK_EXCLUDE_GROUPS.ini exclude group definitions
-├─ M2_SEEK_HL.ini             syntax highlight rules
+├─ M2_SCOUT.ini               settings (INI format)
+├─ M2_SCOUT_EXCLUDE_GROUPS.ini exclude group definitions
+├─ M2_SCOUT_HL.ini            syntax highlight rules
 └─ src/
    ├─ main/                   Electron main process (Node backend)
    │  ├─ main.js              window lifecycle
