@@ -1,0 +1,26 @@
+{
+  "name": "m2_scout",
+  "version": "2026.04.02",
+  "description": "M2_SCOUT - Node.js/Electron port of M2 SEEK: a ripgrep / fd / cscope GUI search tool",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "lint": "node -e \"console.log('no linter configured')\""
+  },
+  "keywords": [
+    "ripgrep",
+    "fd",
+    "cscope",
+    "search",
+    "electron",
+    "code-search"
+  ],
+  "author": "Powered By OA Hsiao",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0"
+  },
+  "optionalDependencies": {
+    "pidusage": "^3.0.2"
+  }
+}

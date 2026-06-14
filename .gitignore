@@ -1,0 +1,29 @@
+# ---- Dependencies ----
+node_modules/
+
+# ---- Build / packaging output ----
+dist/
+out/
+build/
+*.asar
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- cscope artifacts that may be generated inside searched folders ----
+cscope.out
+cscope.in.out
+cscope.po.out
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# NOTE: TOOLS/ (rg.exe / fd.exe / cscope.exe + ZIP archives) is committed on purpose.
+# NOTE: M2_SEEK.ini is committed as a sanitized template. Local runtime changes are
+#       kept out of git via: git update-index --skip-worktree M2_SEEK.ini

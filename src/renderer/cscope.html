@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <title>CSCOPE</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body { padding: 8px; }
+    .cs-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .cs-row label { font-size: 12px; }
+    .cs-row input[type="text"], .cs-row select {
+      font-family: var(--font-code); font-size: 12px; padding: 3px 6px;
+      border: 1px solid var(--border); border-radius: 3px; background: #fff;
+    }
+    .cs-folder { max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cs-query { flex: 1; min-width: 240px; }
+    .cs-info { font-size: 12px; color: #444; }
+    .cs-main { display: flex; flex-direction: column; height: calc(100vh - 150px); }
+    .cs-top { display: flex; flex: 3; min-height: 0; }
+    .cs-results, .cs-preview-pane { display: flex; flex-direction: column; min-width: 0; }
+    .cs-results { flex: 1; }
+    .cs-preview-pane { flex: 1; }
+    .cs-splitter { flex: 0 0 6px; cursor: col-resize;
+      background: linear-gradient(to right, transparent 2px, var(--border) 2px, var(--border) 4px, transparent 4px); }
+    .cs-list {
+      flex: 1; overflow: auto; border: 1px solid var(--border); background: #fff;
+      font-family: var(--font-code); font-size: 12px;
+    }
+    .cs-item { padding: 1px 6px; white-space: pre; cursor: default; }
+    .cs-item:hover { background: #eef5fb; }
+    .cs-item.selected { background: #cfe8ff; }
+    .cs-preview {
+      flex: 1; margin: 0; overflow: auto; border: 1px solid var(--border); background: #fff;
+      font-family: var(--font-code); font-size: 12px; white-space: pre; padding: 4px 6px;
+    }
+    .cs-debug { flex: 1; margin: 0; overflow: auto; background: #1e1e1e; color: #d4d4d4;
+      font-family: var(--font-code); font-size: 11px; padding: 4px 6px; white-space: pre-wrap; border: 1px solid #444; }
+    .cscope_hl { background: #7FFFD4; }
+    .cs-label { font-size: 11px; color: #555; margin: 4px 0 2px; }
+  </style>
+</head>
+<body>
+  <div class="cs-row">
+    <label>Folder</label>
+    <span class="cs-folder" id="folderLabel"></span>
+    <button class="btn" id="openFolder">Open Folder</button>
+    <button class="btn" id="btnIndex">INDEX</button>
+  </div>
+
+  <div class="cs-row">
+    <label>cscope.exe</label>
+    <input type="text" id="cscopeExe" style="width: 220px;" />
+    <label>Mode</label>
+    <select id="mode">
+      <option>0 Find this C symbol</option>
+      <option>1 Find definition</option>
+      <option>2 Find functions called by this function</option>
+      <option selected>3 Find calling functions</option>
+      <option>4 Find text string</option>
+      <option>6 Find egrep pattern</option>
+      <option>7 Find file</option>
+      <option>8 Find files #including this file</option>
+      <option>9 Find assignments to this symbol</option>
+    </select>
+  </div>
+
+  <div class="cs-row">
+    <label>Query</label>
+    <input type="text" id="query" class="cs-query" />
+    <button class="btn btn-blue" id="btnSearch">SEARCH</button>
+  </div>
+
+  <div class="cs-row">
+    <span class="cs-info" id="info"></span>
+  </div>
+
+  <div class="cs-main">
+    <div class="cs-top">
+      <div class="cs-results">
+        <div class="cs-label">Results (double click to open, F1 copy all)</div>
+        <div class="cs-list" id="results" tabindex="0"></div>
+      </div>
+      <div class="cs-splitter" id="csSplitter"></div>
+      <div class="cs-preview-pane">
+        <div class="cs-label">PREVIEW (right click: Open / Copy path / Copy snippet)</div>
+        <pre class="cs-preview" id="preview"></pre>
+      </div>
+    </div>
+    <div class="cs-label">DEBUG (double click: open selected result)</div>
+    <pre class="cs-debug" id="debug"></pre>
+  </div>
+
+  <div class="ctxmenu" id="csCtxMenu" hidden>
+    <div class="ctxitem" data-cmd="open">Open</div>
+    <div class="ctxitem" data-cmd="copyPath">Copy path</div>
+    <div class="ctxitem" data-cmd="copySnippet">Copy snippet</div>
+  </div>
+
+  <script src="js/cscope.js"></script>
+</body>
+</html>
