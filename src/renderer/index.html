@@ -26,12 +26,18 @@
         <div class="grid">
           <label data-i18n="form.rgExe">rg.exe</label>
           <input type="text" data-field="rgExe" class="wide" />
-          <button data-action="browseRg" class="btn" data-i18n="form.browseRg">Browse rg.exe</button>
+          <span class="tool-btns">
+            <button data-action="browseRg" class="btn" data-i18n="form.browse">Browse</button>
+            <button data-action="checkRgUpdate" class="btn btn-blue" data-i18n="form.checkUpdate">Check update</button>
+          </span>
           <span class="cpu" data-el="cpu">CPU: --%</span>
 
           <label data-i18n="form.fdExe">fd.exe</label>
           <input type="text" data-field="fdExe" class="wide" />
-          <button data-action="browseFd" class="btn" data-i18n="form.browseFd">Browse fd.exe</button>
+          <span class="tool-btns">
+            <button data-action="browseFd" class="btn" data-i18n="form.browse">Browse</button>
+            <button data-action="checkFdUpdate" class="btn btn-blue" data-i18n="form.checkUpdate">Check update</button>
+          </span>
           <span></span>
 
           <label data-i18n="form.folder">Folder</label>

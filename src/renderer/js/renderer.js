@@ -237,6 +237,8 @@ class Tab {
     };
     act('browseRg', () => this._browse('rgExe', 'rg'));
     act('browseFd', () => this._browse('fdExe', 'fd'));
+    act('checkRgUpdate', () => this._checkToolUpdate('rg'));
+    act('checkFdUpdate', () => this._checkToolUpdate('fd'));
     act('selectFolder', () => this._selectFolder());
     act('pickExcludeFolders', () => this._openExcludePicker());
     act('pickEditor', () => this._openEditorPicker());
@@ -459,6 +461,45 @@ class Tab {
         if (el) { el.focus(); el.select(); }
       },
     });
+  }
+
+  // Compare the configured rg/fd against the latest GitHub release and, when
+  // out of date, download+install the matching Windows build into TOOLS/.
+  // The target CPU platform (x86_64 / aarch64) comes from Settings.
+  async _checkToolUpdate(tool) {
+    const platform = (window.M2Platform && window.M2Platform.get()) || 'x86_64';
+    const field = tool === 'fd' ? 'fdExe' : 'rgExe';
+    const exePath = this.val(field);
+    this.debug(`[Update] ${T('update.checking')} ${tool} (${platform})...`);
+    let res;
+    try {
+      res = await S.tool.checkUpdate({ tool, platform, exePath });
+    } catch (e) {
+      S.showError(T('update.title'), String(e));
+      return;
+    }
+    if (!res || !res.ok) { S.showError(T('update.title'), (res && res.error) || 'Check failed'); return; }
+    const cur = res.currentVersion || '?';
+    const latest = res.latestVersion || '?';
+    this.debug(`[Update] ${tool}: current=${cur} latest=${latest}`);
+    if (res.upToDate) {
+      await S.showInfo(T('update.title'), `${tool}: ${T('update.upToDate')} (v${latest})`);
+      return;
+    }
+    if (!res.asset) { S.showError(T('update.title'), T('update.noAsset')); return; }
+    this.debug(`[Update] ${T('update.downloading')} ${tool} v${latest} (${res.asset.name})...`);
+    let dl;
+    try {
+      dl = await S.tool.downloadUpdate({
+        tool, platform, asset: res.asset, version: latest,
+      });
+    } catch (e) {
+      S.showError(T('update.title'), String(e));
+      return;
+    }
+    if (!dl || !dl.ok) { S.showError(T('update.title'), (dl && dl.error) || 'Download failed'); return; }
+    this.debug(`[Update] ${tool} -> v${dl.version}: ${dl.path}`);
+    await S.showInfo(T('update.title'), `${tool}: ${T('update.done')} v${dl.version}`);
   }
 
   // Show a friendly label for the current editor command next to the button.

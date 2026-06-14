@@ -26,6 +26,7 @@ const { buildPreviewText } = require('./preview');
 const { launchEditor } = require('./editor');
 const { loadCompiledHlRules } = require('./highlight');
 const { listDir: fsListDir } = require('./fsdialog');
+const toolUpdate = require('./toolUpdate');
 const cscope = require('./cscope');
 
 const activeSessions = new Map(); // sessionId -> session (rg or fd)
@@ -353,6 +354,14 @@ function registerIpc({ openCscopeWindow, getInitialFolder }) {
   // ---- app ----
   // Renderer pulls the optional command-line folder once it has booted.
   ipcMain.handle('app:getCliFolder', () => (typeof getInitialFolder === 'function' ? (getInitialFolder() || null) : null));
+
+  // ---- tool updates (ripgrep / fd) ----
+  ipcMain.handle('tool:checkUpdate', async (_e, params) => {
+    try { return await toolUpdate.checkUpdate(params || {}); } catch (err) { return { ok: false, error: String((err && err.message) || err) }; }
+  });
+  ipcMain.handle('tool:downloadUpdate', async (_e, params) => {
+    try { return await toolUpdate.downloadAndInstall(params || {}); } catch (err) { return { ok: false, error: String((err && err.message) || err) }; }
+  });
 }
 
 function isDir(p) {

@@ -12,12 +12,22 @@
   const THEMES = window.M2Themes;
   const t = (k) => (I18N ? I18N.t(k) : k);
 
+  // Platform preference for tool (rg/fd) update downloads. Default x86_64.
+  const PLAT_KEY = 'm2scout.toolPlatform';
+  const M2Platform = {
+    get() { try { return localStorage.getItem(PLAT_KEY) === 'aarch64' ? 'aarch64' : 'x86_64'; } catch (_e) { return 'x86_64'; } },
+    set(v) { try { localStorage.setItem(PLAT_KEY, v === 'aarch64' ? 'aarch64' : 'x86_64'); } catch (_e) { /* ignore */ } },
+  };
+  window.M2Platform = M2Platform;
+
   let overlay = null;
   let titleEl = null;
   let langLabelEl = null;
   let themeLabelEl = null;
+  let platLabelEl = null;
   let langSel = null;
   let themeSel = null;
+  let platSel = null;
   let closeBtn = null;
 
   function buildPopup() {
@@ -74,6 +84,25 @@
     themeRow.appendChild(themeSel);
     panel.appendChild(themeRow);
 
+    // Platform row (for rg/fd update downloads)
+    const platRow = document.createElement('label');
+    platRow.className = 'settings-row';
+    platLabelEl = document.createElement('span');
+    platLabelEl.className = 'settings-label';
+    platSel = document.createElement('select');
+    platSel.className = 'settings-select';
+    ['x86_64', 'aarch64'].forEach((id) => {
+      const o = document.createElement('option');
+      o.value = id;
+      o.textContent = id;
+      platSel.appendChild(o);
+    });
+    platSel.value = M2Platform.get();
+    platSel.addEventListener('change', () => M2Platform.set(platSel.value));
+    platRow.appendChild(platLabelEl);
+    platRow.appendChild(platSel);
+    panel.appendChild(platRow);
+
     // Close button
     closeBtn = document.createElement('button');
     closeBtn.className = 'btn settings-close';
@@ -94,9 +123,11 @@
     titleEl.textContent = t('settings.title');
     langLabelEl.textContent = t('settings.language');
     themeLabelEl.textContent = t('settings.theme');
+    if (platLabelEl) platLabelEl.textContent = t('settings.platform');
     closeBtn.textContent = t('settings.close');
     if (I18N && langSel) langSel.value = I18N.getLang();
     if (THEMES && themeSel) themeSel.value = THEMES.current();
+    if (platSel) platSel.value = M2Platform.get();
   }
 
   function show() {

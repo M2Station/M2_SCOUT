@@ -172,6 +172,11 @@ body { display: flex; flex-direction: column; }
 .grid input.bold { font-weight: 700; }
 .hintcell, .hint { color: var(--hint); font-size: 11px; }
 .muted { color: var(--muted); font-size: 12px; }
+/* rg.exe / fd.exe action buttons: Browse + Check-update share column 3 as two
+   equal halves, so they line up (same width + height) with the single function
+   buttons in the rows below (Select folder / Exclude folders / Editor). */
+.tool-btns { display: flex; gap: 6px; align-items: stretch; width: 100%; }
+.tool-btns > .btn { flex: 1 1 0; text-align: center; }
 
 .btn {
   font-size: 12px;

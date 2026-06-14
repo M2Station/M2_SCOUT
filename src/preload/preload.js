@@ -85,6 +85,12 @@ contextBridge.exposeInMainWorld('m2scout', {
   // windows
   openCscopeWindow: (ctx) => ipcRenderer.invoke('window:openCscope', ctx),
 
+  // tool updates (ripgrep / fd)
+  tool: {
+    checkUpdate: (params) => ipcRenderer.invoke('tool:checkUpdate', params),
+    downloadUpdate: (params) => ipcRenderer.invoke('tool:downloadUpdate', params),
+  },
+
   // app events
   getCliFolder: () => ipcRenderer.invoke('app:getCliFolder'),
   onCliFolder: (cb) => {
