@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+env:
+  # Run the v4 JS actions on Node 24 (they ship for Node 20, which GitHub is retiring).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   release-windows:
     runs-on: windows-latest
