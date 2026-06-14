@@ -353,6 +353,20 @@ body { display: flex; flex-direction: column; }
 .file-row.selected.row-hl,
 .file-row.selected.row-dim { outline: 1px solid var(--row-sel-outline); outline-offset: -1px; }
 
+/* ---------- Virtualized list (P1) ---------- */
+/* Only the rows currently in view are mounted. ".vlist" is a full-height spacer
+   that gives the scrollbar the right range; each row is absolutely positioned at
+   index * rowHeight. width:max-content + min-width:100% keeps full-width hover
+   while still allowing horizontal scroll for long paths (Chromium/Electron). */
+.vlist { position: relative; width: 100%; }
+.vlist .file-row {
+  position: absolute;
+  left: 0;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
 /* ---------- Files tree view (VS Code style) ---------- */
 .tree-only { display: none; }
 .view-tree .tree-only { display: inline-block; }

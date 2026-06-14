@@ -183,9 +183,15 @@ class Tab {
     this.liveMap = new Map();
     this.liveTimer = null;
     this.pauseLiveUntil = 0;
-    // Incremental list rendering (P2): path -> { el, count, mode }. Null forces
-    // a clean rebuild (tree view, new search, view switch).
-    this._listRowMap = null;
+    // Virtual list (P1): only the rows in view are mounted in the DOM. Tree view
+    // is not virtualized. State is reset on new search / view switch.
+    this._vItems = null;   // [[path,count],...] currently virtualized (list mode)
+    this._vSizer = null;   // the .vlist full-height spacer element
+    this._rowH = 0;        // measured row height in px
+    this._vFirst = -1;     // first row index currently in the DOM window
+    this._vLast = -1;      // end (exclusive) of the DOM window
+    this._vRaf = 0;        // rAF handle to coalesce scroll repaints
+    this._ro = null;       // ResizeObserver on the list (viewport/splitter/tab)
     // Throughput indicator (P6).
     this.searchStartMs = 0;
     this.progMatches = 0;
@@ -290,7 +296,19 @@ class Tab {
     // files list
     const fl = this.els.fileslist;
     fl.addEventListener('keydown', (e) => this._onFilesKey(e));
+    fl.addEventListener('click', (e) => this._onFilesClick(e));
+    fl.addEventListener('scroll', () => this._onFilesScroll());
     fl.addEventListener('contextmenu', (e) => this._onFilesContext(e));
+    // Repaint the virtual window when the list box itself changes size — covers
+    // window resize, splitter drag, and a tab becoming visible (0 -> real size).
+    if (typeof ResizeObserver !== 'undefined') {
+      this._ro = new ResizeObserver(() => {
+        if (this.viewMode === 'tree') return;
+        this._vFirst = -1; this._vLast = -1;
+        this._vRenderWindow();
+      });
+      this._ro.observe(fl);
+    }
 
     // files HL/Filter
     this.els.filesHl.addEventListener('input', () => this.scheduleRecolor());
@@ -559,7 +577,7 @@ class Tab {
     this.updateButtons(true);
     this.baseFolder = this.val('folder').trim();
     this.liveMap = new Map();
-    this._listRowMap = null;
+    this._vItems = null; this._vSizer = null; this._vFirst = -1; this._vLast = -1;
     this.searchStartMs = Date.now();
     this.progMatches = 0;
     this.progMatchedFiles = 0;
@@ -569,6 +587,7 @@ class Tab {
     this.selIdx = -1;
     this.selPath = null;
     this.els.fileslist.innerHTML = '';
+    this.els.fileslist.scrollTop = 0;
     this.els.preview.textContent = '';
     this.previewText = '';
     this.els.status.textContent = `${label}  [${this.mode()}] ${parseKeywords(this.val('keywords')).join(', ')}`;
@@ -698,11 +717,12 @@ class Tab {
 
     const fl = this.els.fileslist;
     if (this.viewMode === 'tree') {
-      this._listRowMap = null; // list row cache is invalid while a tree is shown
+      this._vItems = null;
+      this._vSizer = null;
       fl.innerHTML = '';
       this._renderTree(items, fl);
     } else {
-      this._renderListIncremental(items, fl);
+      this._renderListVirtual(items, fl);
     }
 
     this.els.filesCount.textContent = `${T('files.label')}: ${this.files.length}`;
@@ -712,44 +732,100 @@ class Tab {
       if (i >= 0) this._markSelected(i);
       else { this.selIdx = -1; this.selPath = null; }
     }
-    this.applyRecolor();
+    // Tree leaves get their colours in a DOM pass; the virtual list already
+    // applied hl/filter while painting its window, so only tree needs this.
+    if (this.viewMode === 'tree') this.applyRecolor();
   }
 
-  // Flat list with incremental DOM updates (P2). Instead of wiping the list and
-  // rebuilding every 80ms live flush, we keep a path -> row cache and only
-  // create new rows, update changed counts, reorder moved rows, and drop rows
-  // that disappeared. data-idx is re-stamped to match the (sorted) items order
-  // so selection, recolor and keyboard nav keep working unchanged.
-  _renderListIncremental(items, fl) {
-    if (!this._listRowMap) { fl.innerHTML = ''; this._listRowMap = new Map(); }
-    const map = this._listRowMap;
-    const seen = new Set();
-    let prev = null;
-    items.forEach(([p, c], idx) => {
-      seen.add(p);
-      let rec = map.get(p);
-      if (!rec) {
-        const row = document.createElement('div');
-        row.className = 'file-row';
-        row.dataset.path = p;
-        row.addEventListener('click', () => this.selectFile(Number(row.dataset.idx)));
-        rec = { el: row, count: null, mode: null };
-        map.set(p, rec);
-      }
-      rec.el.dataset.idx = String(idx);
-      if (rec.count !== c || rec.mode !== this.displayMode) {
-        const rel = S.path.relForDisplay(this.baseFolder, p);
-        rec.el.textContent = this.displayMode === 'filename' ? `${rel} [${c}]` : `[${c}] ${rel}`;
-        rec.count = c;
-        rec.mode = this.displayMode;
-      }
-      const ref = prev ? prev.nextSibling : fl.firstChild;
-      if (ref !== rec.el) fl.insertBefore(rec.el, ref);
-      prev = rec.el;
-    });
-    for (const [p, rec] of map) {
-      if (!seen.has(p)) { rec.el.remove(); map.delete(p); }
+  // Virtualized flat list (P1). Only the rows visible in the viewport (plus a
+  // small overscan) are mounted. A full-height ".vlist" spacer gives the
+  // scrollbar the correct range; each row is absolutely positioned at
+  // index * rowHeight. The DOM stays at a few dozen nodes regardless of result
+  // count, so scrolling stays smooth and memory stays flat for huge result sets.
+  _renderListVirtual(items, fl) {
+    this._vItems = items;
+    // Reuse the spacer across live-search flushes; only build it when missing
+    // (first paint, or after a tree render cleared the list).
+    let sizer = this._vSizer;
+    if (!sizer || sizer.parentNode !== fl) {
+      sizer = document.createElement('div');
+      sizer.className = 'vlist';
+      fl.replaceChildren(sizer);
+      this._vSizer = sizer;
     }
+    if (!this._rowH) this._rowH = this._measureRowH(sizer) || 18;
+    sizer.style.height = `${items.length * this._rowH}px`;
+    this._vFirst = -1; this._vLast = -1; // force a fresh window paint
+    this._vRenderWindow();
+  }
+
+  // Measure the real row height once per (re)build so the math tracks the active
+  // theme / font without hardcoding pixels.
+  _measureRowH(host) {
+    const probe = document.createElement('div');
+    probe.className = 'file-row';
+    probe.style.visibility = 'hidden';
+    probe.textContent = 'Mg';
+    host.appendChild(probe);
+    const h = probe.offsetHeight;
+    probe.remove();
+    return h;
+  }
+
+  // Paint exactly the rows the viewport needs right now. Cheap enough to run on
+  // every scroll frame because the window is only ~(viewportHeight / rowHeight)
+  // rows. Highlight / filter colours are applied here too.
+  _vRenderWindow() {
+    const fl = this.els.fileslist;
+    const sizer = this._vSizer;
+    const items = this._vItems;
+    if (!sizer || !items) return;
+    const rowH = this._rowH || 18;
+    const total = items.length;
+    const viewH = fl.clientHeight || 0;
+    const OVER = 8; // overscan rows above & below for smooth wheel / keyboard
+    let first = Math.floor(fl.scrollTop / rowH) - OVER;
+    let last = Math.ceil((fl.scrollTop + viewH) / rowH) + OVER;
+    first = Math.max(0, first);
+    last = Math.min(total, Math.max(first, last));
+    if (first === this._vFirst && last === this._vLast) return;
+    this._vFirst = first; this._vLast = last;
+    const hl = this.els.filesHl.value;
+    const flt = this.els.filesFilter.value;
+    const frag = document.createDocumentFragment();
+    for (let i = first; i < last; i += 1) {
+      const [p, c] = items[i];
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      row.dataset.idx = String(i);
+      row.dataset.path = p;
+      row.style.top = `${i * rowH}px`;
+      const rel = S.path.relForDisplay(this.baseFolder, p);
+      row.textContent = this.displayMode === 'filename' ? `${rel} [${c}]` : `[${c}] ${rel}`;
+      if (i === this.selIdx) row.classList.add('selected');
+      if (matchTokens(p, flt)) row.classList.add('row-dim');
+      else if (matchTokens(p, hl)) row.classList.add('row-hl');
+      frag.appendChild(row);
+    }
+    sizer.replaceChildren(frag);
+  }
+
+  // Bring the row at idx into view (list mode), adjusting scrollTop minimally
+  // like scrollIntoView({ block: 'nearest' }) would for a real element.
+  _scrollToIdx(idx) {
+    const fl = this.els.fileslist;
+    const rowH = this._rowH || 18;
+    const top = idx * rowH;
+    const bottom = top + rowH;
+    if (top < fl.scrollTop) fl.scrollTop = top;
+    else if (bottom > fl.scrollTop + fl.clientHeight) fl.scrollTop = bottom - fl.clientHeight;
+  }
+
+  // Coalesce scroll events into one repaint per animation frame.
+  _onFilesScroll() {
+    if (this.viewMode === 'tree') return;
+    if (this._vRaf) return;
+    this._vRaf = requestAnimationFrame(() => { this._vRaf = 0; this._vRenderWindow(); });
   }
 
   // Tree view (VS Code style): group files by folder into collapsible nodes.
@@ -798,7 +874,6 @@ class Tab {
         // Folder rows show no match-count badge — only file leaves report counts.
         frow.appendChild(tw);
         frow.appendChild(nm);
-        frow.addEventListener('click', () => self._toggleFolder(child.key));
         frag.appendChild(frow);
 
         const kids = document.createElement('div');
@@ -821,7 +896,6 @@ class Tab {
         badge.textContent = String(f.count);
         row.appendChild(nm);
         row.appendChild(badge);
-        row.addEventListener('click', () => self.selectFile(f.idx));
         frag.appendChild(row);
       }
       return frag;
@@ -917,12 +991,20 @@ class Tab {
   }
 
   _markSelected(idx) {
-    const fl = this.els.fileslist;
-    fl.querySelectorAll('.file-row.selected').forEach((r) => r.classList.remove('selected'));
-    const row = fl.querySelector(`.file-row[data-idx="${idx}"]`);
-    if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
     this.selIdx = idx;
     this.selPath = this.files[idx] || null;
+    const fl = this.els.fileslist;
+    if (this.viewMode === 'tree') {
+      fl.querySelectorAll('.file-row.selected').forEach((r) => r.classList.remove('selected'));
+      const row = fl.querySelector(`.file-row[data-idx="${idx}"]`);
+      if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
+      return;
+    }
+    // Virtual list: bring the row into view, then repaint the window so the
+    // `selected` class lands on the (possibly newly mounted) row.
+    this._scrollToIdx(idx);
+    this._vFirst = -1; this._vLast = -1;
+    this._vRenderWindow();
   }
 
   selectFile(idx) {
@@ -947,21 +1029,27 @@ class Tab {
     else if (e.key === 'ArrowUp') { e.preventDefault(); this._navFiles(-1); }
   }
 
-  // Move the selection to the next/previous file row in *visual* (DOM) order.
-  // Keyboard nav must follow what the user sees. In tree view the rows are
-  // grouped by folder and sorted by name, so stepping through `this.files` by
-  // array index made the highlight jump around and appear to skip files. By
-  // walking the rendered `.file-row` elements we keep Up/Down in sync with the
-  // on-screen order and naturally skip rows hidden inside collapsed folders.
+  // Move the selection to the next/previous file row. Tree view walks the
+  // rendered rows (grouped/sorted, some hidden in collapsed folders) so Up/Down
+  // follow on-screen order. List view is virtualized — most rows aren't in the
+  // DOM — so it steps by array index instead.
   _navFiles(dir) {
     const fl = this.els.fileslist;
     if (!fl) return;
-    const rows = [...fl.querySelectorAll('.file-row')].filter((r) => r.offsetParent !== null);
-    if (!rows.length) return;
-    let pos = rows.findIndex((r) => Number(r.dataset.idx) === this.selIdx);
-    if (pos < 0) pos = dir > 0 ? -1 : 0; // nothing selected yet -> first visible row
-    const next = Math.max(0, Math.min(rows.length - 1, pos + dir));
-    this.selectFile(Number(rows[next].dataset.idx));
+    if (this.viewMode === 'tree') {
+      const rows = [...fl.querySelectorAll('.file-row')].filter((r) => r.offsetParent !== null);
+      if (!rows.length) return;
+      let pos = rows.findIndex((r) => Number(r.dataset.idx) === this.selIdx);
+      if (pos < 0) pos = dir > 0 ? -1 : 0; // nothing selected yet -> first visible row
+      const next = Math.max(0, Math.min(rows.length - 1, pos + dir));
+      this.selectFile(Number(rows[next].dataset.idx));
+      return;
+    }
+    if (!this.files.length) return;
+    let pos = this.selIdx;
+    if (pos < 0) pos = dir > 0 ? -1 : 0;
+    const next = Math.max(0, Math.min(this.files.length - 1, pos + dir));
+    this.selectFile(next);
   }
 
   async copyAllFiles() {
@@ -999,6 +1087,12 @@ class Tab {
     this.recolorTimer = setTimeout(() => this.applyRecolor(), CONFIG.UIConfig.FILES_COLOR_DEBOUNCE_MS);
   }
   applyRecolor() {
+    if (this.viewMode !== 'tree') {
+      // Virtual list paints colours as it renders — just force a window repaint.
+      this._vFirst = -1; this._vLast = -1;
+      this._vRenderWindow();
+      return;
+    }
     const hl = this.els.filesHl.value;
     const flt = this.els.filesFilter.value;
     const rows = this.els.fileslist.querySelectorAll('.file-row');
@@ -1012,6 +1106,16 @@ class Tab {
   }
 
   // ---------- files context menu ----------
+  // One delegated click handler for the whole list. Works for the virtual list
+  // (rows mount/unmount constantly) and the tree (folder toggle + file select)
+  // without per-row listeners.
+  _onFilesClick(e) {
+    const fl = this.els.fileslist;
+    const folder = e.target.closest('.tree-folderrow');
+    if (folder && fl.contains(folder)) { this._toggleFolder(folder.dataset.folderkey); return; }
+    const row = e.target.closest('.file-row');
+    if (row && fl.contains(row)) this.selectFile(Number(row.dataset.idx));
+  }
   _onFilesContext(e) {
     e.preventDefault();
     const row = e.target.closest('.file-row');
