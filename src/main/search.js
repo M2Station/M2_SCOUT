@@ -211,6 +211,10 @@ class SearchSession {
         if (r.stopped) {
           stopped = true;
           onDebug(`rg stopped during kw='${kw}'`);
+          // Keep the matches already collected for this keyword so pressing
+          // STOP/ESC does not discard the results found so far.
+          perKwCounts.push(r.counts);
+          perKwFiles.push(new Set(r.counts.keys()));
           break;
         }
         onDebug(`rg done kw='${kw}' | files=${r.counts.size} matches=${sumMap(r.counts)}`);

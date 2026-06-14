@@ -357,6 +357,28 @@ body { display: flex; flex-direction: column; }
 }
 .settings-close { align-self: flex-end; margin-top: 4px; }
 
+/* Editor picker / readout */
+.editor-readout {
+  align-self: center;
+  font-size: 12px;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-exe-row { gap: 6px; }
+.editor-exe-readout {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-exe-hint { margin-top: -2px; }
+
 /* ---------- Exclude-folders picker popup ---------- */
 .exfolder-panel {
   min-width: 520px;

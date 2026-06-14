@@ -76,9 +76,10 @@
           </span>
           <span></span>
 
-          <label data-i18n="form.editorCmd">Editor CMD</label>
-          <input type="text" data-field="editorCmd" class="wide" />
-          <span></span>
+          <label data-i18n="form.editor">Editor</label>
+          <input type="hidden" data-field="editorCmd" />
+          <span class="editor-readout" data-el="editorReadout"></span>
+          <button data-action="pickEditor" class="btn" data-i18n="editor.button">Editor…</button>
           <span></span>
 
           <label data-i18n="form.editorArgs">Editor ARGS (template)</label>
@@ -139,6 +140,7 @@
   <script src="js/i18n.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/excludePicker.js"></script>
+  <script src="js/editorPicker.js"></script>
   <script src="js/highlight.js"></script>
   <script src="js/renderer.js"></script>
 </body>

@@ -216,6 +216,7 @@ class Tab {
     this.setMode('OR');
     this.fields.caseSensitive.checked = true;
     this.fields.respectIgnore.checked = true;
+    this._updateEditorReadout();
     this.updateButtons(false);
   }
 
@@ -228,6 +229,7 @@ class Tab {
     act('browseFd', () => this._browse('fdExe', 'fd'));
     act('selectFolder', () => this._selectFolder());
     act('pickExcludeFolders', () => this._openExcludePicker());
+    act('pickEditor', () => this._openEditorPicker());
     act('searchInFiles', () => this.search());
     act('searchFilename', () => this.searchFilename());
     act('stop', () => this.stop());
@@ -307,6 +309,7 @@ class Tab {
     if (this.fields.respectIgnore && src.fields.respectIgnore) {
       this.fields.respectIgnore.checked = src.fields.respectIgnore.checked;
     }
+    this._updateEditorReadout();
     this.setMode(src.mode());
   }
 
@@ -326,6 +329,7 @@ class Tab {
     if (g('case_sensitive') !== undefined) this.fields.caseSensitive.checked = ['1', 'true', 'yes', 'y', 'on'].includes(String(g('case_sensitive')).toLowerCase());
     if (g('respect_ignore_files') !== undefined) this.fields.respectIgnore.checked = ['1', 'true', 'yes', 'y', 'on'].includes(String(g('respect_ignore_files')).toLowerCase());
     if (g('editor_cmd')) this.setVal('editorCmd', g('editor_cmd'));
+    this._updateEditorReadout();
     if (g('editor_args')) this.setVal('editorArgs', g('editor_args'));
   }
 
@@ -401,6 +405,38 @@ class Tab {
         this.debug(`[Exclude folders] applied ${keys.length} group key(s): ${keys.join(' ')}`);
       },
     });
+  }
+
+  // Open the editor picker (VS Code / Sublime). Writes the chosen command +
+  // args template into the (hidden) editor fields and refreshes the readout.
+  _openEditorPicker() {
+    if (!window.M2EditorPicker) return;
+    window.M2EditorPicker.open({
+      cmd: this.val('editorCmd'),
+      args: this.val('editorArgs'),
+      onApply: ({ cmd, args }) => {
+        this.setVal('editorCmd', cmd);
+        this.setVal('editorArgs', args);
+        this._updateEditorReadout();
+        this.scheduleSave();
+        this.debug(`[Editor] set to: ${cmd} ${args}`);
+      },
+    });
+  }
+
+  // Show a friendly label for the current editor command next to the button.
+  _updateEditorReadout() {
+    const el = this.els.editorReadout;
+    if (!el) return;
+    const cmd = (this.val('editorCmd') || '').trim();
+    const lc = cmd.toLowerCase();
+    let label;
+    if (!cmd) label = T('editor.none');
+    else if (cmd === 'code' || lc.endsWith('code.exe') || lc.endsWith('code.cmd')) label = 'VS Code';
+    else if (lc.includes('subl')) label = `Sublime \u2014 ${S.path.basename(cmd)}`;
+    else label = cmd;
+    el.textContent = label;
+    el.title = `${cmd} ${this.val('editorArgs')}`.trim();
   }
 
   // ---------- search ----------
@@ -516,6 +552,16 @@ class Tab {
     if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
     this.displayMode = payload.filenameMode ? 'filename' : 'content';
     const items = payload.files.map((f) => [f.path, f.count]);
+    // Safety net: if the search was stopped and produced no final list but we
+    // already have rows on screen, keep them instead of clearing the results.
+    if (payload.stopped && items.length === 0 && this.files.length > 0) {
+      const n = this.files.length;
+      const elapsed = (payload.elapsedMs / 1000).toFixed(2);
+      const label = payload.filenameMode ? T('status.filenameDone') : T('status.done');
+      this.els.status.textContent = `${label} in ${elapsed}s  |  [${this.mode()}] ${parseKeywords(this.val('keywords')).join(', ')} [STOPPED]`;
+      this.liveMap = new Map();
+      return;
+    }
     this._renderRows(items);
     const n = this.files.length;
     const elapsed = (payload.elapsedMs / 1000).toFixed(2);

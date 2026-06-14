@@ -50,31 +50,49 @@ function editorTemplateToArgv(template, file, line) {
 }
 
 // Launch the configured editor for file:line. Returns { ok, debug, error }.
+// IMPORTANT: child_process.spawn reports a missing executable (ENOENT) via an
+// asynchronous 'error' event, NOT a thrown exception. If that event has no
+// listener it becomes an uncaught exception and crashes the Electron main
+// process. We therefore attach an 'error' handler to every child we spawn.
 function launchEditor(editorCmd, editorArgsTpl, file, line) {
   const argv = editorTemplateToArgv(editorArgsTpl, file, line);
   const debugMsgs = [`EDITOR: ${[editorCmd, ...argv].join(' ')}`];
 
-  try {
-    const child = spawn(editorCmd, argv, { detached: true, stdio: 'ignore', windowsHide: false });
+  // Spawn a child and swallow async spawn errors (logging them to debug) so a
+  // bad editor path can never crash the app.
+  const safeSpawn = (cmd, args, opts) => {
+    const child = spawn(cmd, args, opts);
+    child.on('error', (err) => {
+      debugMsgs.push(`Editor launch error: ${err && err.message ? err.message : err}`);
+    });
     child.unref();
+    return child;
+  };
+
+  try {
+    if (process.platform === 'win32') {
+      // On Windows the editor command is frequently a .cmd shim (e.g. VS Code's
+      // `code` -> code.cmd) which CreateProcess cannot spawn directly (ENOENT).
+      // Run it through the shell (cmd.exe /c) so PATH/PATHEXT resolution applies
+      // to shims and absolute .exe paths alike. We deliberately do NOT use
+      // `start`: start detaches immediately, so VS Code's CLI gets killed before
+      // it can hand the "open file" request to the already-running instance and
+      // the file never opens. `cmd /c "code ..."` waits for the CLI to deliver
+      // the request, then exits. Quote tokens with spaces; cmd strips the single
+      // outer quote pair Node adds, leaving inner quotes intact.
+      const quote = (c) => (/\s/.test(c) ? `"${c}"` : c);
+      const cmdline = [editorCmd, ...argv].map(quote).join(' ');
+      debugMsgs.push(`WIN LAUNCH: cmd /c ${cmdline}`);
+      safeSpawn(cmdline, [], {
+        detached: true, stdio: 'ignore', windowsHide: true, shell: true,
+      });
+      return { ok: true, debug: debugMsgs };
+    }
+
+    // Non-Windows: spawn the editor directly.
+    safeSpawn(editorCmd, argv, { detached: true, stdio: 'ignore' });
     return { ok: true, debug: debugMsgs };
   } catch (e) {
-    // WinError 740 -> requires elevation; fall back to "cmd /c start"
-    if (process.platform === 'win32' && (e.code === 'EACCES' || e.errno === -4092 || /740/.test(String(e)))) {
-      debugMsgs.push('Elevation required (740). Fallback: cmd /c start ...');
-      try {
-        const quoted = [editorCmd, ...argv]
-          .map((c) => (/[\s\t]/.test(c) ? `"${c}"` : c))
-          .join(' ');
-        const fallback = `start "" ${quoted}`;
-        debugMsgs.push(`FALLBACK: cmd /c ${fallback}`);
-        const child = spawn('cmd.exe', ['/c', fallback], { detached: true, stdio: 'ignore', windowsHide: true, shell: false });
-        child.unref();
-        return { ok: true, debug: debugMsgs };
-      } catch (e2) {
-        return { ok: false, debug: debugMsgs, error: `Elevation issue (740) and fallback failed: ${e2}` };
-      }
-    }
     return { ok: false, debug: debugMsgs, error: String(e) };
   }
 }
