@@ -74,6 +74,8 @@
       'action.stop': 'STOP',
       'action.genCscope': 'GEN_cscope.files',
       'action.cscope': 'CSCOPE',
+      'action.genCscopeTip': 'Generate cscope.files (the source-file list) for the current folder so CSCOPE can index it.',
+      'action.cscopeTip': 'Open the CSCOPE window to browse symbol definitions and references in the current folder.',
 
       'files.label': 'Files',
       'files.hl': 'HL:',
@@ -185,6 +187,8 @@
       'action.stop': '\u505C\u6B62',
       'action.genCscope': '\u7522\u751F cscope.files',
       'action.cscope': 'CSCOPE',
+      'action.genCscopeTip': '\u70BA\u76EE\u524D\u8CC7\u6599\u593E\u7522\u751F cscope.files\uFF08cscope \u8981\u7D22\u5F15\u7684\u539F\u59CB\u6A94\u6E05\u55AE\uFF09\u3002',
+      'action.cscopeTip': '\u958B\u555F CSCOPE \u8996\u7A97\uFF0C\u700F\u89BD\u76EE\u524D\u8CC7\u6599\u593E\u7684\u7B26\u865F\u5B9A\u7FA9\u8207\u5F15\u7528\u3002',
 
       'files.label': '\u6A94\u6848',
       'files.hl': '\u6A19\u4EAE\uFF1A',
