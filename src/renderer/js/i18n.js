@@ -98,6 +98,7 @@
       'debug.toggleShown': '\u25BC DEBUG',
       'debug.toggleHidden': '\u25B6 DEBUG',
       'debug.clear': 'Clear',
+      'debug.copy': 'Copy',
 
       'tab.new': 'New tab (Ctrl+T)',
       'tab.close': 'Close (Ctrl+W)',
@@ -211,6 +212,7 @@
       'debug.toggleShown': '\u25BC \u9664\u932F',
       'debug.toggleHidden': '\u25B6 \u9664\u932F',
       'debug.clear': '\u6E05\u9664',
+      'debug.copy': '\u8907\u88FD',
 
       'tab.new': '\u65B0\u5206\u9801 (Ctrl+T)',
       'tab.close': '\u95DC\u9589 (Ctrl+W)',

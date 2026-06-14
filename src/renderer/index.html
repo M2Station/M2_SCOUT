@@ -125,10 +125,11 @@
       <!-- DEBUG -->
       <div class="debug-outer">
         <div class="debug-bar">
-          <button data-action="toggleDebug" class="btn btn-mini" data-el="debugToggle" data-i18n="debug.toggleShown">▼ DEBUG</button>
+          <button data-action="toggleDebug" class="btn btn-mini" data-el="debugToggle" data-i18n="debug.toggleHidden">▶ DEBUG</button>
+          <button data-action="copyDebug" class="btn btn-mini" data-i18n="debug.copy">Copy</button>
           <button data-action="clearDebug" class="btn btn-mini" data-i18n="debug.clear">Clear</button>
         </div>
-        <pre class="debug" data-el="debug"></pre>
+        <pre class="debug collapsed" data-el="debug"></pre>
       </div>
     </div>
   </template>

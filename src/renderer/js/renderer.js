@@ -250,6 +250,7 @@ class Tab {
     act('treeCollapseAll', () => this.treeSetAllCollapsed(true));
     act('treeExpandAll', () => this.treeSetAllCollapsed(false));
     act('toggleDebug', () => this._toggleDebug());
+    act('copyDebug', () => this._copyDebug());
     act('clearDebug', () => { this.els.debug.textContent = ''; });
 
     // Enter-to-search inputs
@@ -1019,6 +1020,12 @@ class Tab {
   _toggleDebug() {
     const collapsed = this.els.debug.classList.toggle('collapsed');
     this.els.debugToggle.textContent = T(collapsed ? 'debug.toggleHidden' : 'debug.toggleShown');
+  }
+
+  async _copyDebug() {
+    const text = this.els.debug.textContent || '';
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
   }
 
   refreshI18n() {
