@@ -17,4 +17,6 @@ if not exist "node_modules\electron" (
   )
 )
 
-start "" cmd /c npm start -- %*
+REM Launch with NO console window via the VBScript wrapper (start "" cmd /c
+REM npm start leaves a command prompt open for the app's lifetime).
+start "" wscript.exe //nologo "%~dp0run-hidden.vbs" %*

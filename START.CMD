@@ -117,7 +117,8 @@ REM 4) Launch M2_SCOUT
 REM ------------------------------------------------------------
 :launch
 echo [4/4] Launching M2_SCOUT ...
-start "" cmd /c npm start -- %*
+REM Launch with NO console window via the VBScript wrapper.
+start "" wscript.exe //nologo "%~dp0run-hidden.vbs" %*
 exit /b 0
 
 
