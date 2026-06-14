@@ -179,6 +179,11 @@ class Tab {
     this.running = false;
     this.selIdx = -1;
     this.selPath = null;
+    // Multi-selection (U3): a Set of selected file PATHS (survives re-sort /
+    // rebuild, unlike indices). selAnchorPath is the shift-range anchor. The
+    // primary single selection (selIdx/selPath) drives the preview.
+    this.selPaths = new Set();
+    this.selAnchorPath = null;
 
     this.liveMap = new Map();
     this.liveTimer = null;
@@ -586,6 +591,8 @@ class Tab {
     this.currentFile = null;
     this.selIdx = -1;
     this.selPath = null;
+    this.selPaths = new Set();
+    this.selAnchorPath = null;
     this.els.fileslist.innerHTML = '';
     this.els.fileslist.scrollTop = 0;
     this.els.preview.textContent = '';
@@ -819,7 +826,7 @@ class Tab {
       row.style.top = `${i * rowH}px`;
       const rel = S.path.relForDisplay(this.baseFolder, p);
       row.textContent = this.displayMode === 'filename' ? `${rel} [${c}]` : `[${c}] ${rel}`;
-      if (i === this.selIdx) row.classList.add('selected');
+      if (this._isRowSelected(p, i)) row.classList.add('selected');
       if (matchTokens(p, flt)) row.classList.add('row-dim');
       else if (matchTokens(p, hl)) row.classList.add('row-hl');
       frag.appendChild(row);
@@ -912,7 +919,7 @@ class Tab {
         const fp = (items[f.idx] && items[f.idx][0]) || '';
         if (matchTokens(fp, flt)) row.classList.add('row-dim');
         else if (matchTokens(fp, hl)) row.classList.add('row-hl');
-        if (f.idx === self.selIdx) row.classList.add('selected');
+        if (self._isRowSelected(fp, f.idx)) row.classList.add('selected');
         const nm = document.createElement('span');
         nm.className = 'tree-name';
         nm.textContent = f.name;
@@ -1037,66 +1044,180 @@ class Tab {
     }
   }
 
+  // ---------- selection (single + multi, U3) ----------
+  // A row is selected when it's in the multi-selection set, or (when there is
+  // no multi-selection) when it is the single primary row.
+  _isRowSelected(p, i) {
+    if (this.selPaths.size) return this.selPaths.has(p);
+    return i === this.selIdx;
+  }
+
+  // The on-screen row order as paths: array order for the (sorted) list, DOM
+  // order for the tree. Used to compute shift-range and a stable open order.
+  _rowOrderPaths() {
+    if (this.viewMode === 'tree') {
+      return [...this.els.fileslist.querySelectorAll('.file-row')]
+        .map((r) => this.files[Number(r.dataset.idx)]);
+    }
+    return this.files;
+  }
+
+  // Repaint just the `selected` class across the current view (no data rebuild).
+  _repaintSelection() {
+    if (this.viewMode === 'tree') {
+      this.els.fileslist.querySelectorAll('.file-row').forEach((r) => {
+        const i = Number(r.dataset.idx);
+        r.classList.toggle('selected', this._isRowSelected(this.files[i], i));
+      });
+    } else {
+      this._vFirst = -1; this._vLast = -1;
+      this._vRenderWindow();
+    }
+  }
+
+  _showPreviewFor(path) {
+    this.currentFile = path;
+    this.pauseLiveUntil = Date.now() + 800;
+    this.els.previewFile.textContent = `${S.path.basename(path)}  —  ${path}`;
+    this._buildPreview();
+  }
+
   _markSelected(idx) {
     this.selIdx = idx;
     this.selPath = this.files[idx] || null;
-    const fl = this.els.fileslist;
+    // Bring the row into view, then repaint the `selected` class.
     if (this.viewMode === 'tree') {
-      fl.querySelectorAll('.file-row.selected').forEach((r) => r.classList.remove('selected'));
-      const row = fl.querySelector(`.file-row[data-idx="${idx}"]`);
-      if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
-      return;
+      const row = this.els.fileslist.querySelector(`.file-row[data-idx="${idx}"]`);
+      if (row) row.scrollIntoView({ block: 'nearest' });
+    } else {
+      this._scrollToIdx(idx);
     }
-    // Virtual list: bring the row into view, then repaint the window so the
-    // `selected` class lands on the (possibly newly mounted) row.
-    this._scrollToIdx(idx);
-    this._vFirst = -1; this._vLast = -1;
-    this._vRenderWindow();
+    this._repaintSelection();
   }
 
+  // Plain click / arrow: single selection (clears any multi-selection).
   selectFile(idx) {
-    if (idx < 0 || idx >= this.files.length) return;    if (this.viewMode === 'tree') {
+    if (idx < 0 || idx >= this.files.length) return;
+    this.selPaths = new Set();
+    this.selAnchorPath = this.files[idx];
+    if (this.viewMode === 'tree') {
       // Make sure the row is visible (expand collapsed parents) before marking.
       this.selPath = this.files[idx];
       this.selIdx = idx;
       this._expandAncestors(idx);
-    }    this._markSelected(idx);
-    this.currentFile = this.files[idx];
-    this.pauseLiveUntil = Date.now() + 800;
-    this.els.previewFile.textContent = `${S.path.basename(this.currentFile)}  —  ${this.currentFile}`;
-    this._buildPreview();
+    }
+    this._markSelected(idx);
+    this._showPreviewFor(this.files[idx]);
   }
+
+  // Ctrl/Cmd+click: toggle one row in/out of the multi-selection.
+  _toggleSelect(idx) {
+    const p = this.files[idx];
+    if (!p) return;
+    if (!this.selPaths.size && this.selPath) this.selPaths.add(this.selPath); // seed from single
+    if (this.selPaths.has(p)) this.selPaths.delete(p); else this.selPaths.add(p);
+    this.selAnchorPath = p;
+    // If the user toggled everything off, drop the single-selection fallback so
+    // no row stays highlighted.
+    if (this.selPaths.size) { this.selIdx = idx; this.selPath = p; } else { this.selIdx = -1; this.selPath = null; }
+    this._repaintSelection();
+    this._showPreviewFor(p);
+  }
+
+  // Shift+click / Shift+arrow: select the contiguous range from the anchor to
+  // idx in on-screen order. moveAnchor=false keeps the anchor fixed (keyboard
+  // range extend); click sets a fresh anchor only when none exists.
+  _selectRangeTo(idx) {
+    const targetPath = this.files[idx];
+    if (!targetPath) return;
+    const order = this._rowOrderPaths();
+    const anchorPath = this.selAnchorPath || this.selPath || targetPath;
+    let ai = order.indexOf(anchorPath);
+    const ti = order.indexOf(targetPath);
+    if (ai < 0) ai = ti;
+    const lo = Math.min(ai, ti); const hi = Math.max(ai, ti);
+    this.selPaths = new Set();
+    for (let k = lo; k <= hi; k += 1) if (order[k]) this.selPaths.add(order[k]);
+    this.selAnchorPath = anchorPath;
+    this.selIdx = idx; this.selPath = targetPath;
+    if (this.viewMode === 'tree') this._expandAncestors(idx);
+    this._markSelected(idx); // scrolls into view + repaints
+    this._showPreviewFor(targetPath);
+  }
+
+  // Open every selected file in the editor (Enter / batch open). Falls back to
+  // the single current file. Confirms before opening a large batch.
+  async openSelected() {
+    if (this.running) return;
+    let paths = this.selPaths.size
+      ? [...this.selPaths]
+      : (this.currentFile ? [this.currentFile] : []);
+    if (!paths.length) return;
+    const order = this._rowOrderPaths();
+    const pos = new Map(order.map((p, i) => [p, i]));
+    paths = paths.slice().sort((a, b) => (pos.get(a) ?? 0) - (pos.get(b) ?? 0));
+    const LIMIT = 10;
+    if (paths.length > LIMIT) {
+      const msg = T('files.openManyConfirm').replace('{n}', String(paths.length));
+      if (!window.confirm(msg)) return;
+    }
+    const editorCmd = this.val('editorCmd').trim();
+    const editorArgs = this.val('editorArgs').trim();
+    let ok = 0;
+    for (const filePath of paths) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await S.openEditor({ editorCmd, editorArgs, filePath, line: 1 });
+      (res.debug || []).forEach((m) => this.debug(m));
+      if (res.ok) ok += 1;
+      else if (res.error) S.showError('Editor launch failed', res.error);
+    }
+    this.debug(`[Enter] Opened ${ok}/${paths.length} file(s) in the editor`);
+  }
+
 
   _onFilesKey(e) {
     if (e.key === 'F1') { e.preventDefault(); this.copyAllFiles(); }
     else if (e.key === 'F2') { e.preventDefault(); this.promptFilesHl(); }
     else if (e.key === 'F3') { e.preventDefault(); this.promptFilesFilter(); }
     else if (e.key === 'F4') { e.preventDefault(); this.clearFilesHlFilter(); }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); this._navFiles(1); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); this._navFiles(-1); }
+    else if (e.key === 'Enter') { e.preventDefault(); this.openSelected(); }
+    else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.selectAllFiles(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); this._navFiles(1, e.shiftKey); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this._navFiles(-1, e.shiftKey); }
+  }
+
+  // Select every file (Ctrl+A) into the multi-selection.
+  selectAllFiles() {
+    if (!this.files.length) return;
+    this.selPaths = new Set(this.files);
+    this._repaintSelection();
   }
 
   // Move the selection to the next/previous file row. Tree view walks the
   // rendered rows (grouped/sorted, some hidden in collapsed folders) so Up/Down
   // follow on-screen order. List view is virtualized — most rows aren't in the
-  // DOM — so it steps by array index instead.
-  _navFiles(dir) {
+  // DOM — so it steps by array index instead. With Shift held, extend the
+  // multi-selection range from the anchor instead of single-selecting.
+  _navFiles(dir, extend) {
     const fl = this.els.fileslist;
     if (!fl) return;
+    let nextIdx = -1;
     if (this.viewMode === 'tree') {
       const rows = [...fl.querySelectorAll('.file-row')].filter((r) => r.offsetParent !== null);
       if (!rows.length) return;
       let pos = rows.findIndex((r) => Number(r.dataset.idx) === this.selIdx);
       if (pos < 0) pos = dir > 0 ? -1 : 0; // nothing selected yet -> first visible row
       const next = Math.max(0, Math.min(rows.length - 1, pos + dir));
-      this.selectFile(Number(rows[next].dataset.idx));
-      return;
+      nextIdx = Number(rows[next].dataset.idx);
+    } else {
+      if (!this.files.length) return;
+      let pos = this.selIdx;
+      if (pos < 0) pos = dir > 0 ? -1 : 0;
+      nextIdx = Math.max(0, Math.min(this.files.length - 1, pos + dir));
     }
-    if (!this.files.length) return;
-    let pos = this.selIdx;
-    if (pos < 0) pos = dir > 0 ? -1 : 0;
-    const next = Math.max(0, Math.min(this.files.length - 1, pos + dir));
-    this.selectFile(next);
+    if (nextIdx < 0) return;
+    if (extend) this._selectRangeTo(nextIdx);
+    else this.selectFile(nextIdx);
   }
 
   async copyAllFiles() {
@@ -1161,15 +1282,27 @@ class Tab {
     const folder = e.target.closest('.tree-folderrow');
     if (folder && fl.contains(folder)) { this._toggleFolder(folder); return; }
     const row = e.target.closest('.file-row');
-    if (row && fl.contains(row)) this.selectFile(Number(row.dataset.idx));
+    if (!row || !fl.contains(row)) return;
+    const idx = Number(row.dataset.idx);
+    if (e.shiftKey) this._selectRangeTo(idx);
+    else if (e.ctrlKey || e.metaKey) this._toggleSelect(idx);
+    else this.selectFile(idx);
   }
   _onFilesContext(e) {
     e.preventDefault();
     const row = e.target.closest('.file-row');
     if (!row) return;
     const idx = parseInt(row.dataset.idx, 10);
-    this._markSelected(idx);
-    this.currentFile = this.files[idx];
+    const p = this.files[idx];
+    // Keep an existing multi-selection if right-clicking inside it; otherwise
+    // single-select the row under the cursor.
+    if (!this.selPaths.has(p)) {
+      this.selPaths = new Set();
+      this._markSelected(idx);
+    } else {
+      this.selIdx = idx; this.selPath = p;
+    }
+    this.currentFile = p;
     showFilesCtxMenu(e.clientX, e.clientY, this);
   }
 
