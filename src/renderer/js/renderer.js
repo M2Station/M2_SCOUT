@@ -391,6 +391,16 @@ class Tab {
     if (p) { this.setVal(field, p); this.scheduleSave(); }
   }
   async _selectFolder() {
+    // Prefer the in-app keyboard-driven picker (fast, no OS dialog); fall back
+    // to the native directory dialog if it is unavailable.
+    if (window.M2FolderPicker) {
+      const start = (this.val('folder') || '').trim();
+      window.M2FolderPicker.open({
+        start: start || undefined,
+        onPick: (p) => { if (p) { this.setVal('folder', p); this.scheduleSave(); } },
+      });
+      return;
+    }
     const p = await S.pickFolder();
     if (p) { this.setVal('folder', p); this.scheduleSave(); }
   }

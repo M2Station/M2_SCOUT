@@ -6,6 +6,7 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 const path = require('path');
+const os = require('os');
 
 // Display helper: path relative to base folder (for FILES list), like M2_SEEK.
 function relForDisplay(base, fp) {
@@ -40,6 +41,11 @@ contextBridge.exposeInMainWorld('m2scout', {
 
   // dialogs
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
+  // In-app keyboard-driven folder browser backend.
+  listDir: (dir) => ipcRenderer.invoke('dialog:listDir', { dir }),
+  // Starting points / sentinel for the folder picker fallbacks.
+  homeDir: os.homedir(),
+  drivesSentinel: ':drives:',
   pickFile: (name) => ipcRenderer.invoke('dialog:pickFile', { name }),
   showError: (title, message) => ipcRenderer.invoke('dialog:error', { title, message }),
   showInfo: (title, message) => ipcRenderer.invoke('dialog:info', { title, message }),

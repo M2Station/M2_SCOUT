@@ -25,6 +25,7 @@ const { FdSearchSession } = require('./fd');
 const { buildPreviewText } = require('./preview');
 const { launchEditor } = require('./editor');
 const { loadCompiledHlRules } = require('./highlight');
+const { listDir: fsListDir } = require('./fsdialog');
 const cscope = require('./cscope');
 
 const activeSessions = new Map(); // sessionId -> session (rg or fd)
@@ -116,6 +117,17 @@ function registerIpc({ openCscopeWindow, getInitialFolder }) {
     const r = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
     if (r.canceled || !r.filePaths.length) return null;
     return r.filePaths[0];
+  });
+
+  // List the subdirectories under a path for the in-app keyboard-driven folder
+  // picker. Returns null on error (e.g. access denied) so the renderer can keep
+  // the user on the previous folder instead of crashing.
+  ipcMain.handle('dialog:listDir', async (_e, { dir }) => {
+    try {
+      return await fsListDir(dir);
+    } catch (_err) {
+      return null;
+    }
   });
 
   ipcMain.handle('dialog:pickFile', async (e, { name }) => {
