@@ -55,7 +55,10 @@
           <span></span>
 
           <label data-i18n="form.keywords">Keywords</label>
-          <input type="text" data-field="keywords" class="wide bold" data-enter="search" />
+          <span class="kw-wrap">
+            <button data-action="keywordHistory" class="btn btn-mini kw-hist" data-i18n-title="history.button" title="Search history">▾</button>
+            <input type="text" data-field="keywords" class="wide bold" data-enter="search" />
+          </span>
           <span class="ctrl">
             <span class="ctrl-row">
               <span class="mode">
@@ -146,6 +149,7 @@
   <script src="js/excludePicker.js"></script>
   <script src="js/folderPicker.js"></script>
   <script src="js/editorPicker.js"></script>
+  <script src="js/history.js"></script>
   <script src="js/highlight.js"></script>
   <script src="js/renderer.js"></script>
 </body>

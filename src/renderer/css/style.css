@@ -707,4 +707,56 @@ body { display: flex; flex-direction: column; }
   color: var(--muted);
 }
 
+/* ---------- Keyword field + history ---------- */
+/* Wrap so the history button sits to the LEFT of the keyword input, both
+   inside the grid's input column. */
+.kw-wrap { display: flex; align-items: center; gap: 4px; width: 100%; }
+.kw-wrap input { flex: 1 1 auto; }
+.kw-hist { flex: 0 0 auto; cursor: pointer; line-height: 1; }
+
+.history-panel { min-width: 360px; max-width: 70vw; }
+.history-list {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  outline: none;
+}
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.history-row:hover { background: var(--row-hover); }
+.history-row.active {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.history-kw {
+  flex: 1 1 auto;
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-del {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 5px;
+  border-radius: 3px;
+}
+.history-del:hover { background: var(--red); color: #fff; }
+.history-empty { padding: 16px; text-align: center; }
+.history-footer { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+
 

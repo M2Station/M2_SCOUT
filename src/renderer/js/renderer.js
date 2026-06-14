@@ -242,6 +242,7 @@ class Tab {
     act('pickEditor', () => this._openEditorPicker());
     act('searchInFiles', () => this.search());
     act('searchFilename', () => this.searchFilename());
+    act('keywordHistory', () => this._openKeywordHistory());
     act('stop', () => this.stop());
     act('genCscope', () => this._genCscope());
     act('cscope', () => this._openCscope());
@@ -448,6 +449,18 @@ class Tab {
     });
   }
 
+  // Popup of recent keyword searches; picking one fills the keyword field.
+  _openKeywordHistory() {
+    if (!window.M2KeywordHistory) return;
+    window.M2KeywordHistory.open({
+      onPick: (kw) => {
+        this.setVal('keywords', kw);
+        const el = this.fields.keywords;
+        if (el) { el.focus(); el.select(); }
+      },
+    });
+  }
+
   // Show a friendly label for the current editor command next to the button.
   _updateEditorReadout() {
     const el = this.els.editorReadout;
@@ -483,6 +496,9 @@ class Tab {
 
   _beginSearch(label) {
     this.running = true;
+    // Record the keyword(s) into search history (deduped, newest first, max 10).
+    const kw = this.val('keywords').trim();
+    if (kw && window.M2KeywordHistory) window.M2KeywordHistory.add(kw);
     this.updateButtons(true);
     this.baseFolder = this.val('folder').trim();
     this.liveMap = new Map();
