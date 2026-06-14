@@ -1,0 +1,103 @@
+name: Quality
+
+# Validate code flow and code quality on every PR / push to main.
+# Zero extra dependencies - uses only Node built-ins and PowerShell so it runs
+# fast and never blocks on a flaky package install. This is a required gate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Run the v4 JS actions on Node 24 (they ship for Node 20, which GitHub is retiring).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  code-quality:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax check (node --check, all src JS)
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Recurse -Filter *.js -Path src | Select-Object -ExpandProperty FullName
+          $fail = $false
+          foreach ($f in $files) {
+            node --check $f
+            if ($LASTEXITCODE -ne 0) { Write-Host "SYNTAX FAIL: $f"; $fail = $true }
+          }
+          if ($fail) { exit 1 }
+          Write-Host "Syntax OK ($($files.Count) JS files)"
+
+      - name: package.json is valid JSON
+        shell: pwsh
+        run: |
+          try {
+            Get-Content package.json -Raw | ConvertFrom-Json | Out-Null
+            Write-Host "package.json: valid JSON"
+          } catch {
+            Write-Host "package.json INVALID: $_"; exit 1
+          }
+
+      - name: ASCII-only guard (encoding-sensitive files)
+        shell: pwsh
+        run: |
+          # These files must stay pure ASCII. Literal non-ASCII (e.g. CJK) has
+          # repeatedly broken PowerShell / NSIS / YAML parsing on the runner.
+          # Express any non-ASCII via code points instead ([char]0x.... or \uXXXX).
+          $targets = @(
+            'context-menu.ps1',
+            'scripts/release.ps1',
+            'build/installer.nsh',
+            'src/renderer/js/i18n.js'
+          )
+          $targets += (Get-ChildItem .github/workflows -Filter *.yml | ForEach-Object { $_.FullName })
+          $fail = $false
+          foreach ($t in $targets) {
+            if (-not (Test-Path $t)) { continue }
+            $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $t).Path)
+            $bad = @($bytes | Where-Object { $_ -gt 127 })
+            if ($bad.Count) { Write-Host "NON-ASCII ($($bad.Count) bytes): $t"; $fail = $true }
+            else { Write-Host "ASCII OK: $t" }
+          }
+          if ($fail) { exit 1 }
+
+      - name: PowerShell syntax parse (PS1 scripts)
+        shell: pwsh
+        run: |
+          $scripts = @('context-menu.ps1', 'scripts/release.ps1') | Where-Object { Test-Path $_ }
+          $fail = $false
+          foreach ($p in $scripts) {
+            $err = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $p).Path, [ref]$null, [ref]$err) | Out-Null
+            if ($err -and $err.Count) { Write-Host ("PS PARSE FAIL {0}: {1}" -f $p, $err[0].Message); $fail = $true }
+            else { Write-Host "PS OK: $p" }
+          }
+          if ($fail) { exit 1 }
+
+      - name: No leftover debugger statements
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Recurse -Filter *.js -Path src | Select-Object -ExpandProperty FullName
+          $hits = Select-String -Path $files -Pattern '(^|\s)debugger\s*;' -ErrorAction SilentlyContinue
+          if ($hits) {
+            Write-Host "Found debugger statement(s):"
+            $hits | ForEach-Object { Write-Host ("  {0}:{1}" -f $_.Path, $_.LineNumber) }
+            exit 1
+          }
+          Write-Host "No debugger statements"
+
+      - name: Quality gate passed
+        shell: pwsh
+        run: Write-Host "All code flow + quality checks passed."
