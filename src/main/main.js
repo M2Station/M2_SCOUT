@@ -21,6 +21,10 @@ const { ensureFontsInstalled } = require('./fonts');
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 
 let mainWindow = null;
+// Folder passed on the command line (e.g. from the Explorer right-click menu).
+// Stored so the renderer can pull it once it has finished booting, which avoids
+// a race with the window's did-finish-load event.
+let initialFolder = null;
 
 function findIcon() {
   const candidates = [
@@ -120,22 +124,20 @@ app.whenReady().then(() => {
     console.warn('[fonts] ensure failed:', e.message);
   }
 
-  registerIpc({ openCscopeWindow });
-  createMainWindow();
-
-  // Optional CLI arg: a folder to pre-fill in the first tab.
-  const argFolder = process.argv.slice(app.isPackaged ? 1 : 2).find((a) => {
+  // Optional CLI arg: a folder to pre-fill in the first tab (e.g. from the
+  // Explorer right-click menu). Resolve it before wiring IPC so the renderer
+  // can pull it via 'app:getCliFolder' once it has finished booting. Pushing it
+  // on did-finish-load races with the renderer's async boot and gets lost.
+  initialFolder = process.argv.slice(app.isPackaged ? 1 : 2).find((a) => {
     try {
       return a && fs.existsSync(a) && fs.statSync(a).isDirectory();
     } catch (_e) {
       return false;
     }
-  });
-  if (argFolder) {
-    mainWindow.webContents.once('did-finish-load', () => {
-      mainWindow.webContents.send('app:cliFolder', { folder: argFolder });
-    });
-  }
+  }) || null;
+
+  registerIpc({ openCscopeWindow, getInitialFolder: () => initialFolder });
+  createMainWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();

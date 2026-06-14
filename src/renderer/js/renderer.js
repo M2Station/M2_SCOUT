@@ -1089,8 +1089,12 @@ async function boot() {
     manager.renderTabBar();
   });
 
-  // CLI folder
-  S.onCliFolder(({ folder }) => { base.setVal('folder', folder); });
+  // CLI folder (pulled after boot to avoid a race with a main-process push:
+  // the listeners here are only attached after several awaits above).
+  try {
+    const cliFolder = await S.getCliFolder();
+    if (cliFolder) base.setVal('folder', cliFolder);
+  } catch (_e) { /* ignore */ }
 
   // route search events
   S.onSearchEvent(({ sessionId, type, payload }) => {

@@ -80,6 +80,7 @@ contextBridge.exposeInMainWorld('m2scout', {
   openCscopeWindow: (ctx) => ipcRenderer.invoke('window:openCscope', ctx),
 
   // app events
+  getCliFolder: () => ipcRenderer.invoke('app:getCliFolder'),
   onCliFolder: (cb) => {
     const listener = (_e, payload) => cb(payload);
     ipcRenderer.on('app:cliFolder', listener);

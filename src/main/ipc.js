@@ -69,7 +69,7 @@ function buildContext(raw) {
   };
 }
 
-function registerIpc({ openCscopeWindow }) {
+function registerIpc({ openCscopeWindow, getInitialFolder }) {
   // ---- config & ini ----
   ipcMain.handle('config:get', () => ({
     DEBUG,
@@ -337,6 +337,10 @@ function registerIpc({ openCscopeWindow }) {
     win._m2scoutCscopeContext = ctx;
     return { ok: true };
   });
+
+  // ---- app ----
+  // Renderer pulls the optional command-line folder once it has booted.
+  ipcMain.handle('app:getCliFolder', () => (typeof getInitialFolder === 'function' ? (getInitialFolder() || null) : null));
 }
 
 function isDir(p) {
