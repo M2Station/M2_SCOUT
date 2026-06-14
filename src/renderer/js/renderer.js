@@ -167,6 +167,13 @@ class Tab {
       if (v === 'tree' || v === 'list') this.viewMode = v;
     } catch (_e) { /* localStorage unavailable */ }
     this.treeCollapsed = new Set(); // collapsed folder keys (relative)
+    // Files list sort: 'path' (stable, no jumping during a live search) or
+    // 'count' (most matches first). Persisted globally like the view mode.
+    this.sortMode = 'path';
+    try {
+      const s = localStorage.getItem('filesSortMode');
+      if (s === 'count' || s === 'path') this.sortMode = s;
+    } catch (_e) { /* localStorage unavailable */ }
     this.baseFolder = '';
     this.currentFile = null;
     this.running = false;
@@ -176,6 +183,13 @@ class Tab {
     this.liveMap = new Map();
     this.liveTimer = null;
     this.pauseLiveUntil = 0;
+    // Incremental list rendering (P2): path -> { el, count, mode }. Null forces
+    // a clean rebuild (tree view, new search, view switch).
+    this._listRowMap = null;
+    // Throughput indicator (P6).
+    this.searchStartMs = 0;
+    this.progMatches = 0;
+    this.progMatchedFiles = 0;
 
     this.previewToken = 0;
     this.previewText = '';
@@ -214,6 +228,7 @@ class Tab {
     if (window.M2I18n) window.M2I18n.apply(this.contentEl);
     this.contentEl.classList.toggle('view-tree', this.viewMode === 'tree');
     this._updateViewToggle();
+    this._updateSortToggle();
   }
 
   _applyDefaults() {
@@ -250,6 +265,7 @@ class Tab {
     act('cscope', () => this._openCscope());
     act('clearFilesHl', () => this.clearFilesHlFilter());
     act('toggleFilesView', () => this.toggleFilesView());
+    act('toggleSort', () => this.toggleSort());
     act('treeCollapseAll', () => this.treeSetAllCollapsed(true));
     act('treeExpandAll', () => this.treeSetAllCollapsed(false));
     act('toggleDebug', () => this._toggleDebug());
@@ -543,6 +559,10 @@ class Tab {
     this.updateButtons(true);
     this.baseFolder = this.val('folder').trim();
     this.liveMap = new Map();
+    this._listRowMap = null;
+    this.searchStartMs = Date.now();
+    this.progMatches = 0;
+    this.progMatchedFiles = 0;
     this.files = [];
     this.counts = {};
     this.currentFile = null;
@@ -553,7 +573,9 @@ class Tab {
     this.previewText = '';
     this.els.status.textContent = `${label}  [${this.mode()}] ${parseKeywords(this.val('keywords')).join(', ')}`;
     this.els.statusMatch.textContent = '';
-    this.els.filesCount.textContent = `${T('files.label')}: —`;
+    if (this.els.statusRate) this.els.statusRate.textContent = '';
+    if (this.els.progress) this.els.progress.hidden = false;
+    this.els.filesCount.textContent = `${T('files.label')}: \u2014`;
   }
 
   async search() {
@@ -573,6 +595,7 @@ class Tab {
   _failStart(error) {
     this.running = false;
     this.updateButtons(false);
+    this._endSearchUI();
     this.els.status.textContent = T('status.ready');
     S.showError('Error', error || 'Search failed to start');
   }
@@ -597,9 +620,19 @@ class Tab {
   handleEvent(type, payload) {
     if (type === 'debug') this.debug(payload.msg);
     else if (type === 'live') this._onLive(payload.delta);
-    else if (type === 'progress') this.els.statusMatch.textContent = `Matched Files: ${payload.matchedFiles}  Matches: ${payload.matches}`;
-    else if (type === 'done') this._onDone(payload);
-    else if (type === 'error') { S.showError('Error', payload.msg); this.running = false; this.updateButtons(false); this.els.status.textContent = T('status.ready'); }
+    else if (type === 'progress') {
+      this.progMatches = payload.matches;
+      this.progMatchedFiles = payload.matchedFiles;
+      this.els.statusMatch.textContent = `Matched Files: ${payload.matchedFiles}  Matches: ${payload.matches}`;
+    } else if (type === 'done') this._onDone(payload);
+    else if (type === 'error') { S.showError('Error', payload.msg); this.running = false; this.updateButtons(false); this._endSearchUI(); this.els.status.textContent = T('status.ready'); }
+  }
+
+  // Tear down the running-search UI bits (P6 throughput + U1 progress bar).
+  _endSearchUI() {
+    if (this.els.progress) this.els.progress.hidden = true;
+    if (this.els.statusRate) this.els.statusRate.textContent = '';
+    for (const el of [this.els.cpu]) if (el) el.textContent = 'CPU: --%';
   }
 
   _onLive(delta) {
@@ -618,7 +651,7 @@ class Tab {
     // the (now-cleared) liveMap, or it would wipe the results.
     if (!this.running) return;
     if (Date.now() < this.pauseLiveUntil) { this._scheduleLiveRender(); return; }
-    let items = [...this.liveMap.entries()].sort((a, b) => (b[1] - a[1]) || a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
+    let items = this._sortItems([...this.liveMap.entries()]);
     const lim = CONFIG.LiveUpdateConfig.SHOW_LIMIT;
     if (lim && items.length > lim) items = items.slice(0, lim);
     this.displayMode = 'content';
@@ -632,7 +665,7 @@ class Tab {
     // liveMap after we render the final results below (which would blank them).
     if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
     this.displayMode = payload.filenameMode ? 'filename' : 'content';
-    const items = payload.files.map((f) => [f.path, f.count]);
+    const items = this._sortItems(payload.files.map((f) => [f.path, f.count]));
     // Safety net: if the search was stopped and produced no final list but we
     // already have rows on screen, keep them instead of clearing the results.
     if (payload.stopped && items.length === 0 && this.files.length > 0) {
@@ -641,6 +674,7 @@ class Tab {
       const label = payload.filenameMode ? T('status.filenameDone') : T('status.done');
       this.els.status.textContent = `${label} in ${elapsed}s  |  [${this.mode()}] ${parseKeywords(this.val('keywords')).join(', ')} [STOPPED]`;
       this.liveMap = new Map();
+      this._endSearchUI();
       return;
     }
     this._renderRows(items);
@@ -653,6 +687,7 @@ class Tab {
     this.els.status.textContent = `${label} in ${elapsed}s  |  [${this.mode()}] ${parseKeywords(this.val('keywords')).join(', ')}${stoppedTxt}`;
     if (payload.filesSearched != null) this.debug(`SEARCH STATS: elapsed=${elapsed}s | files_searched=${payload.filesSearched}`);
     this.liveMap = new Map();
+    this._endSearchUI();
   }
 
   // ---------- files list ----------
@@ -662,9 +697,13 @@ class Tab {
     for (const [p, c] of items) this.counts[p] = c;
 
     const fl = this.els.fileslist;
-    fl.innerHTML = '';
-    if (this.viewMode === 'tree') this._renderTree(items, fl);
-    else this._renderList(items, fl);
+    if (this.viewMode === 'tree') {
+      this._listRowMap = null; // list row cache is invalid while a tree is shown
+      fl.innerHTML = '';
+      this._renderTree(items, fl);
+    } else {
+      this._renderListIncremental(items, fl);
+    }
 
     this.els.filesCount.textContent = `${T('files.label')}: ${this.files.length}`;
     // restore selection by path
@@ -676,19 +715,41 @@ class Tab {
     this.applyRecolor();
   }
 
-  // Flat list (original behavior): one row per file, `[count] relpath`.
-  _renderList(items, fl) {
-    const frag = document.createDocumentFragment();
+  // Flat list with incremental DOM updates (P2). Instead of wiping the list and
+  // rebuilding every 80ms live flush, we keep a path -> row cache and only
+  // create new rows, update changed counts, reorder moved rows, and drop rows
+  // that disappeared. data-idx is re-stamped to match the (sorted) items order
+  // so selection, recolor and keyboard nav keep working unchanged.
+  _renderListIncremental(items, fl) {
+    if (!this._listRowMap) { fl.innerHTML = ''; this._listRowMap = new Map(); }
+    const map = this._listRowMap;
+    const seen = new Set();
+    let prev = null;
     items.forEach(([p, c], idx) => {
-      const rel = S.path.relForDisplay(this.baseFolder, p);
-      const row = document.createElement('div');
-      row.className = 'file-row';
-      row.dataset.idx = String(idx);
-      row.textContent = this.displayMode === 'filename' ? `${rel} [${c}]` : `[${c}] ${rel}`;
-      row.addEventListener('click', () => this.selectFile(idx));
-      frag.appendChild(row);
+      seen.add(p);
+      let rec = map.get(p);
+      if (!rec) {
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        row.dataset.path = p;
+        row.addEventListener('click', () => this.selectFile(Number(row.dataset.idx)));
+        rec = { el: row, count: null, mode: null };
+        map.set(p, rec);
+      }
+      rec.el.dataset.idx = String(idx);
+      if (rec.count !== c || rec.mode !== this.displayMode) {
+        const rel = S.path.relForDisplay(this.baseFolder, p);
+        rec.el.textContent = this.displayMode === 'filename' ? `${rel} [${c}]` : `[${c}] ${rel}`;
+        rec.count = c;
+        rec.mode = this.displayMode;
+      }
+      const ref = prev ? prev.nextSibling : fl.firstChild;
+      if (ref !== rec.el) fl.insertBefore(rec.el, ref);
+      prev = rec.el;
     });
-    fl.appendChild(frag);
+    for (const [p, rec] of map) {
+      if (!seen.has(p)) { rec.el.remove(); map.delete(p); }
+    }
   }
 
   // Tree view (VS Code style): group files by folder into collapsible nodes.
@@ -770,7 +831,7 @@ class Tab {
 
   // Re-render the files area from the current data (used by tree toggles).
   _rerenderFiles() {
-    const items = this.files.map((p) => [p, this.counts[p] || 0]);
+    const items = this._sortItems(this.files.map((p) => [p, this.counts[p] || 0]));
     this._renderRows(items);
   }
 
@@ -793,6 +854,30 @@ class Tab {
     const el = this.els.viewToggle;
     if (!el) return;
     el.textContent = this.viewMode === 'tree' ? T('files.viewTree') : T('files.viewList');
+  }
+
+  // Switch the result sort between stable path order and match-count order.
+  // Default 'path' keeps rows from jumping around as live counts arrive.
+  toggleSort() {
+    this.sortMode = this.sortMode === 'count' ? 'path' : 'count';
+    try { localStorage.setItem('filesSortMode', this.sortMode); } catch (_e) { /* ignore */ }
+    this._updateSortToggle();
+    this._rerenderFiles();
+  }
+
+  _updateSortToggle() {
+    const el = this.els.sortToggle;
+    if (!el) return;
+    el.textContent = this.sortMode === 'count' ? T('files.sortByCount') : T('files.sortByPath');
+  }
+
+  // Sort a [path, count][] list by the current sort mode. Path order is a
+  // stable, case-insensitive compare; count order is descending with path as
+  // the tie-breaker so equal-count rows still hold a stable position.
+  _sortItems(items) {
+    const byPath = (a, b) => a[0].toLowerCase().localeCompare(b[0].toLowerCase());
+    if (this.sortMode === 'count') return items.slice().sort((a, b) => (b[1] - a[1]) || byPath(a, b));
+    return items.slice().sort(byPath);
   }
 
   // Every folder key in the current result set (for collapse-all).
@@ -1091,6 +1176,7 @@ class Tab {
     this.els.debugToggle.textContent = T(collapsed ? 'debug.toggleHidden' : 'debug.toggleShown');
     this.els.filesCount.textContent = `${T('files.label')}: ${this.files.length || 0}`;
     this._updateViewToggle();
+    this._updateSortToggle();
   }
 
   // ---------- focus ----------
@@ -1190,14 +1276,33 @@ async function boot() {
     if (tab) tab.handleEvent(type, payload);
   });
 
-  // CPU pulse (best-effort indicator: running vs idle)
-  let pulse = 0;
+  // Activity + throughput indicators (P6). While a search runs the CPU slot
+  // shows the real match throughput (matches/sec, derived from the 'progress'
+  // stream) behind a small spinner, and the status bar shows the live elapsed
+  // time. Replaces the old fake 'CPU: ●●●' pulse.
+  const SPIN = ['\u280B', '\u2819', '\u2839', '\u2838', '\u283C', '\u2834', '\u2826', '\u2827', '\u2807', '\u280F'];
+  const fmtNum = (n) => {
+    if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+    if (n >= 1e4) return `${Math.round(n / 1000)}k`;
+    if (n >= 1e3) return `${(n / 1000).toFixed(1)}k`;
+    return String(n);
+  };
+  let spin = 0;
   setInterval(() => {
-    pulse = (pulse + 1) % 4;
+    spin = (spin + 1) % SPIN.length;
+    const g = SPIN[spin];
     for (const t of manager.tabs) {
-      if (t.els && t.els.cpu) t.els.cpu.textContent = t.running ? `CPU: ${'●'.repeat(pulse + 1)}` : 'CPU: --%';
+      if (!t.els) continue;
+      if (t.running) {
+        const secs = Math.max(0.001, (Date.now() - t.searchStartMs) / 1000);
+        const rate = Math.round(t.progMatches / secs);
+        if (t.els.cpu) t.els.cpu.textContent = `${g} ${fmtNum(rate)}/s`;
+        if (t.els.statusRate) t.els.statusRate.textContent = `${secs.toFixed(1)}s`;
+      } else if (t.els.cpu && t.els.cpu.textContent !== 'CPU: --%') {
+        t.els.cpu.textContent = 'CPU: --%';
+      }
     }
-  }, 350);
+  }, 200);
 
   base.debug('M2_SCOUT (M2 SEEK Node.js port) - Initialized');
 }

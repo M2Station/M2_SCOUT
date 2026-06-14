@@ -104,6 +104,7 @@
           <div class="files-header">
             <span class="files-count" data-el="filesCount">Files: 0</span>
             <button data-action="toggleFilesView" class="btn btn-mini" data-el="viewToggle" data-i18n-title="files.viewToggle" title="List/Tree">List</button>
+            <button data-action="toggleSort" class="btn btn-mini" data-el="sortToggle" data-i18n-title="files.sortToggle" title="Sort: Name/Count">Name</button>
             <button data-action="treeCollapseAll" class="btn btn-mini tree-only" data-i18n-title="files.collapseAll" title="Collapse all">−</button>
             <button data-action="treeExpandAll" class="btn btn-mini tree-only" data-i18n-title="files.expandAll" title="Expand all">+</button>
             <span class="muted" data-i18n="files.hl">HL:</span>
@@ -129,6 +130,8 @@
       <div class="statusbar">
         <span class="status" data-el="status" data-i18n="status.ready">Ready.</span>
         <span class="status-match" data-el="statusMatch"></span>
+        <span class="status-rate" data-el="statusRate"></span>
+        <div class="progress" data-el="progress" hidden><div class="progress-bar"></div></div>
       </div>
 
       <!-- DEBUG -->
