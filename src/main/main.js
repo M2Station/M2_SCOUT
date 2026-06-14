@@ -11,6 +11,15 @@ const { registerIpc } = require('./ipc');
 const { parentToolDir, appDir } = require('./paths');
 const { ensureFontsInstalled } = require('./fonts');
 
+// Electron keeps a GPU shader disk cache under the user-data folder. On some
+// Windows setups that folder can't be created or moved (antivirus lock, a
+// stale lock from a previous run, or a roaming-profile permission quirk),
+// which spams the console with "Unable to move the cache: Access is denied",
+// "Unable to create cache" and "Gpu Cache Creation failed: -2". Disabling the
+// shader disk cache removes those errors with no visible impact for this tool.
+// Must run before the app is ready.
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
 let mainWindow = null;
 
 function findIcon() {

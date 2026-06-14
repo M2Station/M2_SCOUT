@@ -496,6 +496,10 @@ class Tab {
   }
 
   _renderLive() {
+    // A live flush may have been queued just before the search finished. Once
+    // 'done' has rendered the authoritative list we must not paint again from
+    // the (now-cleared) liveMap, or it would wipe the results.
+    if (!this.running) return;
     if (Date.now() < this.pauseLiveUntil) { this._scheduleLiveRender(); return; }
     let items = [...this.liveMap.entries()].sort((a, b) => (b[1] - a[1]) || a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
     const lim = CONFIG.LiveUpdateConfig.SHOW_LIMIT;
@@ -507,6 +511,9 @@ class Tab {
   _onDone(payload) {
     this.running = false;
     this.updateButtons(false);
+    // Cancel any pending live flush so it can't repaint from the cleared
+    // liveMap after we render the final results below (which would blank them).
+    if (this.liveTimer) { clearTimeout(this.liveTimer); this.liveTimer = null; }
     this.displayMode = payload.filenameMode ? 'filename' : 'content';
     const items = payload.files.map((f) => [f.path, f.count]);
     this._renderRows(items);

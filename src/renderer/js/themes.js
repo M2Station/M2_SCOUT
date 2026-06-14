@@ -178,9 +178,55 @@
     '--ctxmenu-hover': '#0a2e0a',
   });
 
+  // VS Code Dark+ (matches VS Code's default dark color scheme).
+  const VSCODE_DARK = Object.assign({}, LOW_KEY, {
+    '--bg': '#1e1e1e', // editor background
+    '--panel': '#252526', // side bar / panel background
+    '--border': '#3c3c3c',
+    '--text': '#d4d4d4', // editor foreground
+    '--muted': '#858585',
+    '--hint': '#6e7681',
+    '--text-soft': '#cccccc',
+    '--tabbar-bg': '#252526',
+    '--tab-bg': '#2d2d2d', // inactive tab
+    '--tab-add-hover': '#37373d',
+    '--tab-active': '#0e639c', // filled active tab in VS Code blue
+    '--tab-active-text': '#ffffff',
+    '--input-bg': '#3c3c3c', // input background
+    '--btn-bg': '#0e639c', // primary button blue
+    '--btn-bg-hover': '#1177bb',
+    '--btn-border': '#0e639c',
+    '--btn-text': '#ffffff',
+    '--accent': '#007acc', // focus / accent blue
+    '--green': '#4ec9b0',
+    '--blue': '#569cd6',
+    '--purple': '#c586c0',
+    '--red': '#f14c4c',
+    '--files-hl': '#264f33',
+    '--files-dim': '#2a2a2a',
+    '--row-hover': '#2a2d2e', // list hover
+    '--row-selected': '#094771', // list active selection
+    '--row-sel-outline': '#007acc',
+    '--statusbar-bg': '#007acc', // VS Code status bar blue
+    '--debug-bg': '#1e1e1e',
+    '--debug-text': '#cccccc',
+    '--debug-border': '#3c3c3c',
+    '--ctxmenu-bg': '#252526',
+    '--ctxmenu-border': '#454545',
+    '--ctxmenu-hover': '#04395e', // menu hover blue
+    '--syn-comment': '#6A9955',
+    '--syn-string': '#ce9178',
+    '--syn-number': '#b5cea8',
+    '--syn-keyword': '#569cd6',
+    '--syn-type': '#4EC9B0',
+    '--syn-decorator': '#DCDCAA',
+    '--syn-common_kw': '#C586C0',
+  });
+
   const THEMES = {
     daylight: { name: 'Daylight (Light)', vars: DAYLIGHT },
     low_key: { name: 'Low Key (Dark)', vars: LOW_KEY },
+    vscode_dark: { name: 'VS Code (Dark)', vars: VSCODE_DARK },
     solarized: { name: 'Solarized', vars: SOLARIZED },
     matrix: { name: 'Matrix', vars: MATRIX },
   };
