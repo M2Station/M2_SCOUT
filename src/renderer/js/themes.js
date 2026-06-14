@@ -161,6 +161,54 @@
     '--syn-common_kw': '#f47521',
   });
 
+  // Army (Dark) - steel/iron-grey base with military-green accents, after the
+  // Gun Shop dark template (near-black charcoal panels, olive-green highlight).
+  // Steel grey background per request, olive-green accent for tabs / selection /
+  // throughput / progress. Overrides the dark base.
+  const ARMY_DARK = Object.assign({}, LOW_KEY, {
+    '--bg': '#1b1e21',
+    '--panel': '#26292d',
+    '--border': '#3a4047',
+    '--text': '#dfe2e5',
+    '--muted': '#9aa3ab',
+    '--hint': '#79828b',
+    '--text-soft': '#c4c9ce',
+    '--tabbar-bg': '#16191c',
+    '--tab-bg': '#23272b',
+    '--tab-add-hover': '#2e3338',
+    '--tab-active': '#7e8c3a',
+    '--tab-active-text': '#10130a',
+    '--input-bg': '#15181b',
+    '--btn-bg': '#23272b',
+    '--btn-bg-hover': '#2e3338',
+    '--btn-border': '#3a4047',
+    '--btn-text': '#dfe2e5',
+    '--accent': '#8a9a3d',
+    '--green': '#7e8c3a',
+    '--blue': '#5a7fa0',
+    '--purple': '#9a6fc0',
+    '--red': '#cf4b3f',
+    '--files-hl': '#3c4a1e',
+    '--files-dim': '#262a2e',
+    '--row-hover': '#262b22',
+    '--row-selected': '#3a4626',
+    '--row-sel-outline': '#8a9a3d',
+    '--statusbar-bg': '#16191c',
+    '--debug-bg': '#121417',
+    '--debug-text': '#c4c9ce',
+    '--debug-border': '#3a4047',
+    '--ctxmenu-bg': '#23272b',
+    '--ctxmenu-border': '#3a4047',
+    '--ctxmenu-hover': '#2e3a20',
+    '--syn-comment': '#7a8472',
+    '--syn-string': '#b5c46a',
+    '--syn-number': '#d6c07a',
+    '--syn-keyword': '#a8b84a',
+    '--syn-type': '#c4d17a',
+    '--syn-decorator': '#cda83e',
+    '--syn-common_kw': '#8a9a3d',
+  });
+
   // VS Code Dark+ (matches VS Code's default dark color scheme).
   const VSCODE_DARK = Object.assign({}, LOW_KEY, {
     '--bg': '#1e1e1e', // editor background
@@ -211,6 +259,7 @@
     low_key: { name: 'Low Key (Dark)', vars: LOW_KEY },
     vscode_dark: { name: 'VS Code (Dark)', vars: VSCODE_DARK },
     army: { name: 'Army', vars: ARMY },
+    army_dark: { name: 'Army (Dark)', vars: ARMY_DARK },
   };
 
   const DEFAULT_THEME = 'daylight';
