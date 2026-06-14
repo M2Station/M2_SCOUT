@@ -36,6 +36,64 @@ So out of the box it reuses the binaries already present in the M2_SEEK repo.
 
 ---
 
+## Building the installer
+
+M2_SCOUT packages with [electron-builder](https://www.electron.build/) into an
+**interactive Windows installer (NSIS)**. The bundled `TOOLS/`, `FONTS/`, `LOGO/`,
+the INI templates and `context-menu.ps1` are copied next to `M2_SCOUT.exe`, and
+settings are written back there at runtime. The default per-user install location
+(`%LOCALAPPDATA%\Programs\M2_SCOUT`) is writable, so the INI-next-to-exe model keeps
+working.
+
+```powershell
+npm install     # first time (adds electron-builder)
+npm run pack    # unpacked build  -> dist/win-unpacked/M2_SCOUT.exe (CI smoke test)
+npm run dist    # NSIS installer  -> dist/M2_SCOUT-Setup-<version>.exe
+```
+
+The app/installer/shortcut/uninstaller icon is `LOGO/M2_SCOUT.ico` (a multi-size
+ICO incl. 256px, required by NSIS). Replace that file (keeping the name and a 256px
+entry) to rebrand.
+
+### What the installer does
+
+- Shows an **interactive** wizard (welcome → choose folder → progress → finish);
+  it is **not** a silent one-click install.
+- Applies the **M2_SCOUT logo** to the exe, Start-menu / desktop shortcuts, and the
+  uninstaller.
+- Registers the Explorer **right-click "search this folder" menu** pointing at the
+  freshly installed exe. Any previous entry (a dev checkout or an older install) is
+  **removed first**, so the menu always targets the installed app. Uninstalling
+  removes the menu. The Chinese menu label is emitted from Unicode code points in
+  the ASCII-only [`context-menu.ps1`](context-menu.ps1), and the NSIS hook
+  ([`build/installer.nsh`](build/installer.nsh)) is pure ASCII — no mojibake.
+
+### Continuous build & release (GitHub Actions)
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| [`build.yml`](.github/workflows/build.yml) | every push / PR to `main` | `npm ci`, JS syntax check, `npm run pack`, verify the exe ships with TOOLS/FONTS/LOGO/INI/context-menu.ps1, upload the unpacked build |
+| [`release.yml`](.github/workflows/release.yml) | pushing a `v*` tag | build the NSIS installer and attach `M2_SCOUT-Setup-<version>.exe` to a GitHub Release |
+
+### Cutting a release
+
+The release helper auto-provisions missing tooling (git / node / npm via winget),
+verifies or publishes, and prefers the CI tag-push path:
+
+```powershell
+# verify the build packages cleanly (publishes nothing):
+pwsh scripts/release.ps1 -Version 0.0.1
+
+# bump + commit + tag + push -> CI builds & publishes the installer:
+pwsh scripts/release.ps1 -Version 0.0.1 -Publish
+#   or auto-increment:  pwsh scripts/release.ps1 -Bump patch -Publish
+```
+
+In Copilot Chat you can just say **"我要 RELEASE v0.0.1"** — the `m2scout-release`
+skill runs this flow for you.
+
+---
+
 ## Feature parity with M2 SEEK
 
 | Area | M2 SEEK (Python/Tk) | M2_SCOUT (Node/Electron) |

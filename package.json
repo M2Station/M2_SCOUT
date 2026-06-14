@@ -5,7 +5,9 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "lint": "node -e \"console.log('no linter configured')\""
+    "lint": "node -e \"console.log('no linter configured')\"",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis"
   },
   "keywords": [
     "ripgrep",
@@ -18,9 +20,68 @@
   "author": "Powered By OA Hsiao",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
   },
   "optionalDependencies": {
     "pidusage": "^3.0.2"
+  },
+  "build": {
+    "appId": "com.m2station.m2scout",
+    "productName": "M2_SCOUT",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "extraFiles": [
+      {
+        "from": "TOOLS",
+        "to": "TOOLS",
+        "filter": [
+          "**/*",
+          "!ZIP",
+          "!ZIP/**"
+        ]
+      },
+      {
+        "from": "FONTS",
+        "to": "FONTS"
+      },
+      {
+        "from": "LOGO",
+        "to": "LOGO"
+      },
+      "M2_SCOUT.ini",
+      "M2_SCOUT_EXCLUDE_GROUPS.ini",
+      "M2_SCOUT_HL.ini",
+      "context-menu.ps1"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis"
+        }
+      ],
+      "icon": "LOGO/M2_SCOUT.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "M2_SCOUT",
+      "runAfterFinish": true,
+      "installerIcon": "LOGO/M2_SCOUT.ico",
+      "uninstallerIcon": "LOGO/M2_SCOUT.ico",
+      "installerHeaderIcon": "LOGO/M2_SCOUT.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "uninstallDisplayName": "${productName} ${version}"
+    }
   }
 }

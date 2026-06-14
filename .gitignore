@@ -4,7 +4,9 @@ node_modules/
 # ---- Build / packaging output ----
 dist/
 out/
-build/
+# electron-builder buildResources: ignore transient output but keep the NSIS hook.
+build/*
+!build/installer.nsh
 *.asar
 
 # ---- Logs ----
