@@ -77,6 +77,13 @@ const HighlightConfig = {
 
 const LiveUpdateConfig = {
   FLUSH_MS: 80,
+  // Adaptive live-flush throttle (P5): the flush interval ramps from FLUSH_MS
+  // (responsive, small result sets) up to FLUSH_MS_MAX (calmer, big result
+  // sets) as the live result count grows from ADAPT_FROM to ADAPT_TO. This
+  // keeps the UI snappy for small searches but cuts repaint CPU on huge ones.
+  FLUSH_MS_MAX: 300,
+  ADAPT_FROM: 500,
+  ADAPT_TO: 5000,
   SHOW_LIMIT: 2000,
 };
 

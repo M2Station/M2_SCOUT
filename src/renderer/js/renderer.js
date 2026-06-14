@@ -661,7 +661,24 @@ class Tab {
 
   _scheduleLiveRender() {
     if (this.liveTimer) return;
-    this.liveTimer = setTimeout(() => { this.liveTimer = null; this._renderLive(); }, CONFIG.LiveUpdateConfig.FLUSH_MS);
+    this.liveTimer = setTimeout(() => { this.liveTimer = null; this._renderLive(); }, this._liveFlushDelay());
+  }
+
+  // Adaptive flush interval (P5): small result sets flush at FLUSH_MS (snappy);
+  // as the live count grows toward ADAPT_TO the interval ramps up to
+  // FLUSH_MS_MAX so we repaint less often and spend less CPU. Tree view rebuilds
+  // are heavier than the virtualized list, so it gets a slightly higher floor.
+  _liveFlushDelay() {
+    const c = CONFIG.LiveUpdateConfig;
+    const n = this.liveMap.size;
+    const min = c.FLUSH_MS;
+    const max = c.FLUSH_MS_MAX || min;
+    const lo = c.ADAPT_FROM || 0;
+    const hi = c.ADAPT_TO || (lo + 1);
+    let delay = min;
+    if (n > lo) delay = min + (max - min) * Math.min(1, (n - lo) / Math.max(1, hi - lo));
+    if (this.viewMode === 'tree') delay = Math.min(max, delay * 1.5);
+    return Math.round(delay);
   }
 
   _renderLive() {
@@ -732,9 +749,9 @@ class Tab {
       if (i >= 0) this._markSelected(i);
       else { this.selIdx = -1; this.selPath = null; }
     }
-    // Tree leaves get their colours in a DOM pass; the virtual list already
-    // applied hl/filter while painting its window, so only tree needs this.
-    if (this.viewMode === 'tree') this.applyRecolor();
+    // Tree leaves are coloured inline while rendering (P3); the virtual list
+    // applies hl/filter while painting its window. So neither needs a separate
+    // recolor pass here.
   }
 
   // Virtualized flat list (P1). Only the rows visible in the viewport (plus a
@@ -832,6 +849,10 @@ class Tab {
   // Each folder shows the aggregated match count on the right; file leaves keep
   // data-idx so selection / recolor / keyboard nav continue to work.
   _renderTree(items, fl) {
+    // Highlight / dim tokens, read once and applied inline per leaf (P3) so we
+    // skip a second full-tree recolor pass after every render.
+    const hl = this.els.filesHl.value;
+    const flt = this.els.filesFilter.value;
     const root = { folders: new Map(), files: [], count: 0, key: '' };
     items.forEach(([p, c], idx) => {
       const rel = S.path.relForDisplay(this.baseFolder, p);
@@ -888,6 +909,10 @@ class Tab {
         row.className = 'file-row tree-file';
         row.dataset.idx = String(f.idx);
         row.style.paddingLeft = `${depth * 14 + 20}px`;
+        const fp = (items[f.idx] && items[f.idx][0]) || '';
+        if (matchTokens(fp, flt)) row.classList.add('row-dim');
+        else if (matchTokens(fp, hl)) row.classList.add('row-hl');
+        if (f.idx === self.selIdx) row.classList.add('selected');
         const nm = document.createElement('span');
         nm.className = 'tree-name';
         nm.textContent = f.name;
@@ -909,10 +934,21 @@ class Tab {
     this._renderRows(items);
   }
 
-  _toggleFolder(key) {
-    if (this.treeCollapsed.has(key)) this.treeCollapsed.delete(key);
-    else this.treeCollapsed.add(key);
-    this._rerenderFiles();
+  // Flip one folder open/closed in place (P4): toggle the `.collapsed` class on
+  // the folder's children container (its next sibling) and swap the twisty
+  // glyph. No tree rebuild, so toggling a giant tree is instant.
+  _setFolderRowCollapsed(folderRow, collapsed) {
+    const key = folderRow.dataset.folderkey;
+    if (collapsed) this.treeCollapsed.add(key); else this.treeCollapsed.delete(key);
+    const tw = folderRow.querySelector('.tw');
+    if (tw) tw.textContent = collapsed ? '\u25B8' : '\u25BE';
+    const kids = folderRow.nextElementSibling;
+    if (kids && kids.classList.contains('tree-children')) kids.classList.toggle('collapsed', collapsed);
+  }
+
+  _toggleFolder(folderRow) {
+    const collapsed = !this.treeCollapsed.has(folderRow.dataset.folderkey);
+    this._setFolderRowCollapsed(folderRow, collapsed);
   }
 
   // Switch between flat list and folder tree, persisting the choice.
@@ -972,7 +1008,13 @@ class Tab {
   treeSetAllCollapsed(collapsed) {
     if (this.viewMode !== 'tree') return;
     this.treeCollapsed = collapsed ? this._allFolderKeys() : new Set();
-    this._rerenderFiles();
+    // Toggle every rendered folder in place rather than rebuilding the tree.
+    this.els.fileslist.querySelectorAll('.tree-folderrow').forEach((frow) => {
+      const tw = frow.querySelector('.tw');
+      if (tw) tw.textContent = collapsed ? '\u25B8' : '\u25BE';
+      const kids = frow.nextElementSibling;
+      if (kids && kids.classList.contains('tree-children')) kids.classList.toggle('collapsed', collapsed);
+    });
   }
 
   // Expand any collapsed ancestor folders so the given file becomes visible.
@@ -982,12 +1024,17 @@ class Tab {
     const rel = S.path.relForDisplay(this.baseFolder, p);
     const segs = rel.split(/[\\/]+/).filter(Boolean);
     let acc = '';
-    let changed = false;
+    const fl = this.els.fileslist;
     for (let i = 0; i < segs.length - 1; i += 1) {
       acc = acc ? `${acc}/${segs[i]}` : segs[i];
-      if (this.treeCollapsed.has(acc)) { this.treeCollapsed.delete(acc); changed = true; }
+      if (this.treeCollapsed.has(acc)) {
+        // Expand in place (P4): find the folder row and open it; no rebuild.
+        const frow = [...fl.querySelectorAll('.tree-folderrow')]
+          .find((r) => r.dataset.folderkey === acc);
+        if (frow) this._setFolderRowCollapsed(frow, false);
+        else this.treeCollapsed.delete(acc);
+      }
     }
-    if (changed) this._rerenderFiles();
   }
 
   _markSelected(idx) {
@@ -1112,7 +1159,7 @@ class Tab {
   _onFilesClick(e) {
     const fl = this.els.fileslist;
     const folder = e.target.closest('.tree-folderrow');
-    if (folder && fl.contains(folder)) { this._toggleFolder(folder.dataset.folderkey); return; }
+    if (folder && fl.contains(folder)) { this._toggleFolder(folder); return; }
     const row = e.target.closest('.file-row');
     if (row && fl.contains(row)) this.selectFile(Number(row.dataset.idx));
   }
