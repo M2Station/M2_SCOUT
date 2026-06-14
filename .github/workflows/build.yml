@@ -11,6 +11,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  # Run the v4 JS actions on Node 24 (they ship for Node 20, which GitHub is retiring).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build-windows:
     runs-on: windows-latest
