@@ -106,13 +106,6 @@ contextBridge.exposeInMainWorld('m2scout', {
     return () => ipcRenderer.removeListener('app:flushSettings', listener);
   },
 
-  // Real CPU usage (%) of the app, pushed from main once a second.
-  onCpuUpdate: (cb) => {
-    const listener = (_e, payload) => cb(payload);
-    ipcRenderer.on('cpu:update', listener);
-    return () => ipcRenderer.removeListener('cpu:update', listener);
-  },
-
   // path helpers
   path: {
     basename: (p) => path.basename(p),
