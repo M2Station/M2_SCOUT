@@ -159,6 +159,14 @@ class Tab {
     this.files = [];
     this.counts = {};
     this.displayMode = 'content';
+    // Files list view: 'list' (flat) or 'tree' (collapsible folders, VS Code
+    // style). Persisted globally so new tabs inherit the last choice.
+    this.viewMode = 'list';
+    try {
+      const v = localStorage.getItem('filesViewMode');
+      if (v === 'tree' || v === 'list') this.viewMode = v;
+    } catch (_e) { /* localStorage unavailable */ }
+    this.treeCollapsed = new Set(); // collapsed folder keys (relative)
     this.baseFolder = '';
     this.currentFile = null;
     this.running = false;
@@ -204,6 +212,8 @@ class Tab {
     this._wire();
     this._applyDefaults();
     if (window.M2I18n) window.M2I18n.apply(this.contentEl);
+    this.contentEl.classList.toggle('view-tree', this.viewMode === 'tree');
+    this._updateViewToggle();
   }
 
   _applyDefaults() {
@@ -236,6 +246,9 @@ class Tab {
     act('genCscope', () => this._genCscope());
     act('cscope', () => this._openCscope());
     act('clearFilesHl', () => this.clearFilesHlFilter());
+    act('toggleFilesView', () => this.toggleFilesView());
+    act('treeCollapseAll', () => this.treeSetAllCollapsed(true));
+    act('treeExpandAll', () => this.treeSetAllCollapsed(false));
     act('toggleDebug', () => this._toggleDebug());
     act('clearDebug', () => { this.els.debug.textContent = ''; });
 
@@ -582,6 +595,21 @@ class Tab {
 
     const fl = this.els.fileslist;
     fl.innerHTML = '';
+    if (this.viewMode === 'tree') this._renderTree(items, fl);
+    else this._renderList(items, fl);
+
+    this.els.filesCount.textContent = `${T('files.label')}: ${this.files.length}`;
+    // restore selection by path
+    if (this.selPath) {
+      const i = this.files.indexOf(this.selPath);
+      if (i >= 0) this._markSelected(i);
+      else { this.selIdx = -1; this.selPath = null; }
+    }
+    this.applyRecolor();
+  }
+
+  // Flat list (original behavior): one row per file, `[count] relpath`.
+  _renderList(items, fl) {
     const frag = document.createDocumentFragment();
     items.forEach(([p, c], idx) => {
       const rel = S.path.relForDisplay(this.baseFolder, p);
@@ -593,15 +621,149 @@ class Tab {
       frag.appendChild(row);
     });
     fl.appendChild(frag);
+  }
 
-    this.els.filesCount.textContent = `${T('files.label')}: ${this.files.length}`;
-    // restore selection by path
-    if (this.selPath) {
-      const i = this.files.indexOf(this.selPath);
-      if (i >= 0) this._markSelected(i);
-      else { this.selIdx = -1; this.selPath = null; }
+  // Tree view (VS Code style): group files by folder into collapsible nodes.
+  // Each folder shows the aggregated match count on the right; file leaves keep
+  // data-idx so selection / recolor / keyboard nav continue to work.
+  _renderTree(items, fl) {
+    const root = { folders: new Map(), files: [], count: 0, key: '' };
+    items.forEach(([p, c], idx) => {
+      const rel = S.path.relForDisplay(this.baseFolder, p);
+      const segs = rel.split(/[\\/]+/).filter(Boolean);
+      const fname = segs.length ? segs[segs.length - 1] : rel;
+      let node = root;
+      for (let i = 0; i < segs.length - 1; i += 1) {
+        const name = segs[i];
+        let child = node.folders.get(name);
+        if (!child) {
+          child = {
+            folders: new Map(), files: [], count: 0, key: node.key ? `${node.key}/${name}` : name,
+          };
+          node.folders.set(name, child);
+        }
+        child.count += c;
+        node = child;
+      }
+      node.files.push({ name: fname, idx, count: c });
+    });
+
+    const self = this;
+    function renderChildren(node, depth) {
+      const frag = document.createDocumentFragment();
+      const folderNames = [...node.folders.keys()]
+        .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+      for (const name of folderNames) {
+        const child = node.folders.get(name);
+        const collapsed = self.treeCollapsed.has(child.key);
+        const frow = document.createElement('div');
+        frow.className = 'tree-row tree-folderrow';
+        frow.style.paddingLeft = `${depth * 14 + 4}px`;
+        frow.dataset.folderkey = child.key;
+        const tw = document.createElement('span');
+        tw.className = 'tw';
+        tw.textContent = collapsed ? '\u25B8' : '\u25BE';
+        const nm = document.createElement('span');
+        nm.className = 'tree-name';
+        nm.textContent = name;
+        const badge = document.createElement('span');
+        badge.className = 'tree-badge';
+        badge.textContent = String(child.count);
+        frow.appendChild(tw);
+        frow.appendChild(nm);
+        frow.appendChild(badge);
+        frow.addEventListener('click', () => self._toggleFolder(child.key));
+        frag.appendChild(frow);
+
+        const kids = document.createElement('div');
+        kids.className = `tree-children${collapsed ? ' collapsed' : ''}`;
+        kids.appendChild(renderChildren(child, depth + 1));
+        frag.appendChild(kids);
+      }
+      const files = node.files.slice()
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      for (const f of files) {
+        const row = document.createElement('div');
+        row.className = 'file-row tree-file';
+        row.dataset.idx = String(f.idx);
+        row.style.paddingLeft = `${depth * 14 + 20}px`;
+        const nm = document.createElement('span');
+        nm.className = 'tree-name';
+        nm.textContent = f.name;
+        const badge = document.createElement('span');
+        badge.className = 'tree-badge';
+        badge.textContent = String(f.count);
+        row.appendChild(nm);
+        row.appendChild(badge);
+        row.addEventListener('click', () => self.selectFile(f.idx));
+        frag.appendChild(row);
+      }
+      return frag;
     }
-    this.applyRecolor();
+    fl.appendChild(renderChildren(root, 0));
+  }
+
+  // Re-render the files area from the current data (used by tree toggles).
+  _rerenderFiles() {
+    const items = this.files.map((p) => [p, this.counts[p] || 0]);
+    this._renderRows(items);
+  }
+
+  _toggleFolder(key) {
+    if (this.treeCollapsed.has(key)) this.treeCollapsed.delete(key);
+    else this.treeCollapsed.add(key);
+    this._rerenderFiles();
+  }
+
+  // Switch between flat list and folder tree, persisting the choice.
+  toggleFilesView() {
+    this.viewMode = this.viewMode === 'tree' ? 'list' : 'tree';
+    try { localStorage.setItem('filesViewMode', this.viewMode); } catch (_e) { /* ignore */ }
+    this.contentEl.classList.toggle('view-tree', this.viewMode === 'tree');
+    this._updateViewToggle();
+    this._rerenderFiles();
+  }
+
+  _updateViewToggle() {
+    const el = this.els.viewToggle;
+    if (!el) return;
+    el.textContent = this.viewMode === 'tree' ? T('files.viewTree') : T('files.viewList');
+  }
+
+  // Every folder key in the current result set (for collapse-all).
+  _allFolderKeys() {
+    const keys = new Set();
+    for (const p of this.files) {
+      const rel = S.path.relForDisplay(this.baseFolder, p);
+      const segs = rel.split(/[\\/]+/).filter(Boolean);
+      let acc = '';
+      for (let i = 0; i < segs.length - 1; i += 1) {
+        acc = acc ? `${acc}/${segs[i]}` : segs[i];
+        keys.add(acc);
+      }
+    }
+    return keys;
+  }
+
+  treeSetAllCollapsed(collapsed) {
+    if (this.viewMode !== 'tree') return;
+    this.treeCollapsed = collapsed ? this._allFolderKeys() : new Set();
+    this._rerenderFiles();
+  }
+
+  // Expand any collapsed ancestor folders so the given file becomes visible.
+  _expandAncestors(idx) {
+    const p = this.files[idx];
+    if (!p) return;
+    const rel = S.path.relForDisplay(this.baseFolder, p);
+    const segs = rel.split(/[\\/]+/).filter(Boolean);
+    let acc = '';
+    let changed = false;
+    for (let i = 0; i < segs.length - 1; i += 1) {
+      acc = acc ? `${acc}/${segs[i]}` : segs[i];
+      if (this.treeCollapsed.has(acc)) { this.treeCollapsed.delete(acc); changed = true; }
+    }
+    if (changed) this._rerenderFiles();
   }
 
   _markSelected(idx) {
@@ -614,8 +776,12 @@ class Tab {
   }
 
   selectFile(idx) {
-    if (idx < 0 || idx >= this.files.length) return;
-    this._markSelected(idx);
+    if (idx < 0 || idx >= this.files.length) return;    if (this.viewMode === 'tree') {
+      // Make sure the row is visible (expand collapsed parents) before marking.
+      this.selPath = this.files[idx];
+      this.selIdx = idx;
+      this._expandAncestors(idx);
+    }    this._markSelected(idx);
     this.currentFile = this.files[idx];
     this.pauseLiveUntil = Date.now() + 800;
     this.els.previewFile.textContent = `${S.path.basename(this.currentFile)}  —  ${this.currentFile}`;
@@ -633,10 +799,15 @@ class Tab {
 
   async copyAllFiles() {
     if (this.running) return;
-    const rows = [...this.els.fileslist.querySelectorAll('.file-row')].map((r) => r.textContent);
-    if (!rows.length) return;
-    await navigator.clipboard.writeText(rows.join('\n') + '\n');
-    this.debug(`[F1] Copied ${rows.length} file rows to clipboard`);
+    if (!this.files.length) return;
+    // Copy full relative paths regardless of list/tree view.
+    const lines = this.files.map((p) => {
+      const rel = S.path.relForDisplay(this.baseFolder, p);
+      const c = this.counts[p] || 0;
+      return this.displayMode === 'filename' ? `${rel} [${c}]` : `[${c}] ${rel}`;
+    });
+    await navigator.clipboard.writeText(`${lines.join('\n')}\n`);
+    this.debug(`[F1] Copied ${lines.length} file rows to clipboard`);
   }
 
   promptFilesHl() {
@@ -831,6 +1002,7 @@ class Tab {
     const collapsed = this.els.debug.classList.contains('collapsed');
     this.els.debugToggle.textContent = T(collapsed ? 'debug.toggleHidden' : 'debug.toggleShown');
     this.els.filesCount.textContent = `${T('files.label')}: ${this.files.length || 0}`;
+    this._updateViewToggle();
   }
 
   // ---------- focus ----------

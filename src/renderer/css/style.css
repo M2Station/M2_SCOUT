@@ -229,6 +229,49 @@ body { display: flex; flex-direction: column; }
 .file-row.selected.row-hl,
 .file-row.selected.row-dim { outline: 1px solid var(--row-sel-outline); outline-offset: -1px; }
 
+/* ---------- Files tree view (VS Code style) ---------- */
+.tree-only { display: none; }
+.view-tree .tree-only { display: inline-block; }
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px 1px 0;
+  white-space: nowrap;
+}
+.tree-folderrow { cursor: pointer; }
+.tree-folderrow:hover { background: var(--row-hover); }
+.file-row.tree-file {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.tw {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+}
+.tree-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tree-badge {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 16px;
+  text-align: center;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--btn-bg);
+  color: var(--muted);
+  font-size: 10px;
+}
+.tree-children.collapsed { display: none; }
+
 /* ---------- Preview ---------- */
 .preview {
   flex: 1;
