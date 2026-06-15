@@ -1551,6 +1551,16 @@ async function boot() {
 
   document.getElementById('tabAdd').addEventListener('click', () => manager.add(false));
 
+  // App credit -> open the author's GitHub in the default browser. preventDefault
+  // stops the <a href> from navigating the renderer window away from the app.
+  const creditEl = document.getElementById('appCredit');
+  if (creditEl) {
+    creditEl.addEventListener('click', (e) => {
+      e.preventDefault();
+      S.openExternal('https://github.com/oahsiao');
+    });
+  }
+
   const base = manager.add(true);
   base.loadFromIni(baseIniRaw);
 

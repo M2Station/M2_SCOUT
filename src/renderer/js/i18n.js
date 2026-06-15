@@ -125,6 +125,8 @@
       'settings.platform': 'Platform (tool downloads)',
       'settings.open': 'Settings',
       'settings.close': 'Close',
+      'credit.by': 'Powered by',
+      'credit.title': 'Open the author\u2019s GitHub (github.com/oahsiao)',
 
       'update.title': 'Tool update',
       'update.checking': 'Checking',
@@ -259,6 +261,8 @@
       'settings.platform': '\u5E73\u53F0\uFF08\u5DE5\u5177\u4E0B\u8F09\uFF09',
       'settings.open': '\u8A2D\u5B9A',
       'settings.close': '\u95DC\u9589',
+      'credit.by': 'Powered by',
+      'credit.title': '\u958B\u555F\u4F5C\u8005\u7684 GitHub\uFF08github.com/oahsiao\uFF09',
 
       'update.title': '\u5DE5\u5177\u66F4\u65B0',
       'update.checking': '\u6AA2\u67E5\u4E2D',
