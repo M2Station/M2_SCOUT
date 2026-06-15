@@ -60,6 +60,13 @@ contextBridge.exposeInMainWorld('m2scout', {
     return () => ipcRenderer.removeListener('search:event', listener);
   },
 
+  // System CPU% pushed continuously from main (always-on, even when idle).
+  onSysCpu: (cb) => {
+    const listener = (_e, payload) => cb(payload);
+    ipcRenderer.on('sys:cpu', listener);
+    return () => ipcRenderer.removeListener('sys:cpu', listener);
+  },
+
   // preview & editor
   buildPreview: (params) => ipcRenderer.invoke('preview:build', params),
   openEditor: (params) => ipcRenderer.invoke('editor:open', params),

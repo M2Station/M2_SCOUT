@@ -192,9 +192,10 @@ M2_SCOUT/
 
 ### Intentional differences
 
-- The original shows live **CPU%** of the `rg` process via `psutil`. M2_SCOUT shows a
-  lightweight running/idle indicator instead (no per-child CPU sampling
-  dependency). Install the optional `pidusage` package if you want to extend this.
+- The original shows live **CPU%** of the `rg` process via `psutil`. M2_SCOUT
+  shows the machine's overall **system CPU%** instead, sampled natively from
+  Node's `os.cpus()` in the main process (no per-child sampling dependency) and
+  pushed to the window continuously, so it stays live even when idle.
 - Tk text tags are reproduced with layered DOM spans; foreground precedence
   follows the same tag priority order as M2 SEEK.
 
