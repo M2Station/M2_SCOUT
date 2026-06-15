@@ -264,59 +264,59 @@
     '--syn-common_kw': '#C586C0',
   });
 
-  // Military1 (Camouflage green-and-white military aesthetic):
-  // Deep military green background with lighter tactical green panels.
-  // White/cream text with olive accents. Inspired by SlidesCarnival's
-  // camouflage military template - strength, discipline, professional unity.
+  // Military1 (Authentic camouflage pattern - green, brown, tan, black):
+  // Multi-layer camouflage aesthetic with deep forest green, tactical brown,
+  // sand tones, and dark charcoal. Mimics real mil-spec camouflage patterns.
+  // White/cream high-contrast text. Inspired by actual combat camouflage.
   // Overrides the dark base.
   const MILITARY1 = Object.assign({}, LOW_KEY, {
-    '--bg': '#0d1108',
-    '--panel': '#1a2410',
-    '--border': '#2d3a1f',
-    '--text': '#f0f0f0',
-    '--muted': '#a8b89c',
-    '--hint': '#7d8c6a',
-    '--text-soft': '#dcdcc8',
-    '--tabbar-bg': '#0a0d06',
-    '--tab-bg': '#161f0f',
-    '--tab-add-hover': '#2a3618',
-    '--tab-active': '#a6d534',
-    '--tab-active-text': '#0d1108',
-    '--input-bg': '#0f1309',
-    '--btn-bg': '#161f0f',
-    '--btn-bg-hover': '#2a3618',
-    '--btn-border': '#2d3a1f',
-    '--btn-text': '#f0f0f0',
-    '--accent': '#b8e034',
-    '--green': '#7fa83a',
-    '--blue': '#4a8da6',
-    '--purple': '#9a5fc0',
-    '--red': '#c86849',
-    '--files-hl': '#2d3a1f',
-    '--files-dim': '#151d0d',
-    '--kw-hl': '#FFEB3B',
-    '--kw-hl-text': '#000000',
-    '--f3-hl': '#FF9800',
-    '--f3-hl-text': '#000000',
-    '--cscope-hl': '#7FFFD4',
-    '--cscope-hl-text': '#000000',
-    '--row-hover': '#16210c',
-    '--row-selected': '#2a3618',
-    '--row-sel-outline': '#b8e034',
-    '--statusbar-bg': '#0a0d06',
-    '--debug-bg': '#05070300',
-    '--debug-text': '#dcdcc8',
-    '--debug-border': '#2d3a1f',
-    '--ctxmenu-bg': '#161f0f',
-    '--ctxmenu-border': '#2d3a1f',
-    '--ctxmenu-hover': '#212b10',
-    '--syn-comment': '#8a9a78',
-    '--syn-string': '#a8d648',
-    '--syn-number': '#d0d458',
-    '--syn-keyword': '#b8e034',
-    '--syn-type': '#a8d648',
-    '--syn-decorator': '#d4a840',
-    '--syn-common_kw': '#b8e034',
+    '--bg': '#1a1810',        // Dark brown-black base (charcoal)
+    '--panel': '#2d3218',     // Deep olive-green (primary camo tone)
+    '--border': '#3d4a25',    // Medium green-brown (camo blend)
+    '--text': '#f5f5f0',      // Off-white (high contrast)
+    '--muted': '#9a9a88',     // Muted sand-tan
+    '--hint': '#7a7a68',      // Hint brown-gray
+    '--text-soft': '#e8e8dc', // Soft cream
+    '--tabbar-bg': '#0f0d08', // Near-black (darkest)
+    '--tab-bg': '#1d2410',    // Forest green (tab base)
+    '--tab-add-hover': '#3a4723', // Medium camo blend
+    '--tab-active': '#c4d540', // Bright lime (max contrast)
+    '--tab-active-text': '#0f0d08', // Black text on bright
+    '--input-bg': '#151310',  // Very dark brown
+    '--btn-bg': '#1d2410',    // Forest green buttons
+    '--btn-bg-hover': '#3a4723', // Hover: medium blend
+    '--btn-border': '#3d4a25', // Green-brown border
+    '--btn-text': '#f5f5f0',  // Off-white text
+    '--accent': '#d4e540',    // Bright tactical yellow-green
+    '--green': '#8fb83f',     // Olive-green (medium camo)
+    '--blue': '#5a8a96',      // Steel-gray-blue (military blue)
+    '--purple': '#8a5fa0',    // Military purple
+    '--red': '#b85a48',       // Rust-red (burnt earth tone)
+    '--files-hl': '#3d4a25',  // Green-brown highlight
+    '--files-dim': '#0f0d08', // Darkest (near-black)
+    '--kw-hl': '#FFF44F',     // Bright yellow highlight
+    '--kw-hl-text': '#1a1810', // Dark text on yellow
+    '--f3-hl': '#FFB84D',     // Tan-orange highlight
+    '--f3-hl-text': '#1a1810', // Dark text on tan
+    '--cscope-hl': '#7FFFD4', // Aqua (contrast)
+    '--cscope-hl-text': '#1a1810', // Dark text
+    '--row-hover': '#242d16',  // Dark green hover
+    '--row-selected': '#3d4a25', // Camo blend selected
+    '--row-sel-outline': '#d4e540', // Bright outline
+    '--statusbar-bg': '#0f0d08', // Near-black status
+    '--debug-bg': '#0a0805',   // Absolute black debug
+    '--debug-text': '#e8e8dc', // Cream text
+    '--debug-border': '#3d4a25', // Green-brown border
+    '--ctxmenu-bg': '#1d2410', // Forest green menu
+    '--ctxmenu-border': '#3d4a25', // Camo border
+    '--ctxmenu-hover': '#2d3a18', // Deep green hover
+    '--syn-comment': '#8a9a78',    // Muted olive comment
+    '--syn-string': '#b8d650',     // Bright green string
+    '--syn-number': '#d4c45a',     // Sand-yellow number
+    '--syn-keyword': '#d4e540',    // Bright lime keyword
+    '--syn-type': '#a8c850',       // Medium green type
+    '--syn-decorator': '#d4a840',  // Bronze decorator
+    '--syn-common_kw': '#d4e540',  // Bright lime common
   });
 
   const THEMES = {
