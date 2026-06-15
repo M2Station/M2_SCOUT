@@ -197,11 +197,11 @@ class Tab {
     this._vLast = -1;      // end (exclusive) of the DOM window
     this._vRaf = 0;        // rAF handle to coalesce scroll repaints
     this._ro = null;       // ResizeObserver on the list (viewport/splitter/tab)
-    // rg/fd child-process CPU% (P6), pushed from main via the 'cpu' event.
+    // Per-search progress + timing counters. CPU% is now machine-wide and lives
+    // on the manager (pushed from main via the always-on 'sys:cpu' event).
     this.searchStartMs = 0;
     this.progMatches = 0;
     this.progMatchedFiles = 0;
-    this.procCpu = 0;
 
     this.previewToken = 0;
     this.previewText = '';
@@ -587,7 +587,6 @@ class Tab {
     this.searchStartMs = Date.now();
     this.progMatches = 0;
     this.progMatchedFiles = 0;
-    this.procCpu = 0;
     this.files = [];
     this.counts = {};
     this.currentFile = null;
@@ -652,8 +651,6 @@ class Tab {
       this.progMatches = payload.matches;
       this.progMatchedFiles = payload.matchedFiles;
       this.els.statusMatch.textContent = `Matched Files: ${payload.matchedFiles}  Matches: ${payload.matches}`;
-    } else if (type === 'cpu') {
-      this.procCpu = (payload && typeof payload.percent === 'number') ? payload.percent : 0;
     } else if (type === 'done') this._onDone(payload);
     else if (type === 'error') { S.showError('Error', payload.msg); this.running = false; this.updateButtons(false); this._endSearchUI(); this.els.status.textContent = T('status.ready'); }
   }
@@ -1576,26 +1573,33 @@ async function boot() {
     if (tab) tab.handleEvent(type, payload);
   });
 
-  // CPU usage indicator. While a search runs, the CPU slot shows the real CPU
-  // percent of the rg/fd child processes that actually do the work (sampled in
-  // the main process and pushed via the per-search 'cpu' event), behind a small
-  // spinner; the status bar shows the live elapsed time. The percent is
-  // Task-Manager style: 100% means all logical cores fully busy. When idle (no
-  // search, so no rg/fd process to measure) the slot shows 'CPU: --%'.
+  // System-wide CPU%, pushed continuously from main (even when idle).
+  manager.sysCpu = 0;
+  S.onSysCpu((payload) => {
+    manager.sysCpu = (payload && typeof payload.percent === 'number') ? payload.percent : 0;
+  });
+
+  // CPU usage indicator. The CPU slot always shows the machine's overall CPU
+  // utilization (Task-Manager style: 100% = every logical core fully busy),
+  // sampled in the main process from os.cpus() and pushed continuously via the
+  // 'sys:cpu' event. While a search runs we add a small spinner and show the
+  // live elapsed time in the status bar; the number naturally rises as the
+  // rg/fd workers do their job.
   const SPIN = ['\u280B', '\u2819', '\u2839', '\u2838', '\u283C', '\u2834', '\u2826', '\u2827', '\u2807', '\u280F'];
   let spin = 0;
   setInterval(() => {
     spin = (spin + 1) % SPIN.length;
     const g = SPIN[spin];
+    const sys = typeof manager.sysCpu === 'number' ? manager.sysCpu : 0;
     for (const t of manager.tabs) {
       if (!t.els || !t.els.cpu) continue;
       if (t.running) {
         const secs = Math.max(0.001, (Date.now() - t.searchStartMs) / 1000);
         if (t.els.statusRate) t.els.statusRate.textContent = `${secs.toFixed(1)}s`;
-        const cpu = typeof t.procCpu === 'number' ? t.procCpu : 0;
-        t.els.cpu.textContent = `${g} CPU: ${cpu}%`;
-      } else if (t.els.cpu.textContent !== 'CPU: --%') {
-        t.els.cpu.textContent = 'CPU: --%';
+        t.els.cpu.textContent = `${g} CPU: ${sys}%`;
+      } else {
+        const txt = `CPU: ${sys}%`;
+        if (t.els.cpu.textContent !== txt) t.els.cpu.textContent = txt;
       }
     }
   }, 200);
