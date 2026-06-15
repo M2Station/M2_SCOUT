@@ -264,12 +264,68 @@
     '--syn-common_kw': '#C586C0',
   });
 
+  // Military1 (Camouflage green-and-white military aesthetic):
+  // Deep military green background with lighter tactical green panels.
+  // White/cream text with olive accents. Inspired by SlidesCarnival's
+  // camouflage military template - strength, discipline, professional unity.
+  // Overrides the dark base.
+  const MILITARY1 = Object.assign({}, LOW_KEY, {
+    '--bg': '#0d1108',
+    '--panel': '#1a2410',
+    '--border': '#2d3a1f',
+    '--text': '#f0f0f0',
+    '--muted': '#a8b89c',
+    '--hint': '#7d8c6a',
+    '--text-soft': '#dcdcc8',
+    '--tabbar-bg': '#0a0d06',
+    '--tab-bg': '#161f0f',
+    '--tab-add-hover': '#2a3618',
+    '--tab-active': '#a6d534',
+    '--tab-active-text': '#0d1108',
+    '--input-bg': '#0f1309',
+    '--btn-bg': '#161f0f',
+    '--btn-bg-hover': '#2a3618',
+    '--btn-border': '#2d3a1f',
+    '--btn-text': '#f0f0f0',
+    '--accent': '#b8e034',
+    '--green': '#7fa83a',
+    '--blue': '#4a8da6',
+    '--purple': '#9a5fc0',
+    '--red': '#c86849',
+    '--files-hl': '#2d3a1f',
+    '--files-dim': '#151d0d',
+    '--kw-hl': '#FFEB3B',
+    '--kw-hl-text': '#000000',
+    '--f3-hl': '#FF9800',
+    '--f3-hl-text': '#000000',
+    '--cscope-hl': '#7FFFD4',
+    '--cscope-hl-text': '#000000',
+    '--row-hover': '#16210c',
+    '--row-selected': '#2a3618',
+    '--row-sel-outline': '#b8e034',
+    '--statusbar-bg': '#0a0d06',
+    '--debug-bg': '#05070300',
+    '--debug-text': '#dcdcc8',
+    '--debug-border': '#2d3a1f',
+    '--ctxmenu-bg': '#161f0f',
+    '--ctxmenu-border': '#2d3a1f',
+    '--ctxmenu-hover': '#212b10',
+    '--syn-comment': '#8a9a78',
+    '--syn-string': '#a8d648',
+    '--syn-number': '#d0d458',
+    '--syn-keyword': '#b8e034',
+    '--syn-type': '#a8d648',
+    '--syn-decorator': '#d4a840',
+    '--syn-common_kw': '#b8e034',
+  });
+
   const THEMES = {
     daylight: { name: 'Daylight (Light)', vars: DAYLIGHT },
     low_key: { name: 'Low Key (Dark)', vars: LOW_KEY },
     vscode_dark: { name: 'VS Code (Dark)', vars: VSCODE_DARK },
     army: { name: 'Army', vars: ARMY },
     army_dark: { name: 'Army (Dark)', vars: ARMY_DARK },
+    military1: { name: 'Military1 (Camouflage)', vars: MILITARY1 },
   };
 
   const DEFAULT_THEME = 'daylight';
