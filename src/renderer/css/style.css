@@ -540,6 +540,72 @@ body { display: flex; flex-direction: column; }
 }
 .tab-settings:hover { background: var(--tab-add-hover); }
 
+/* App credit / author signature, pinned to the far right of the tab bar.
+   Idle: a GitHub mark, a soft "Powered by", and an accent-gradient name. Hover:
+   the mark spins, an accent glow blooms behind a pill, and a shimmer sweeps the
+   name. The gradient animation only runs on hover, so it costs nothing at idle.
+   Opens the author's GitHub in the default browser (handled in the renderer,
+   never navigates the app). */
+.tab-credit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 8px 4px 4px;
+  padding: 3px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.tab-credit .gh-icon {
+  width: 14px;
+  height: 14px;
+  fill: var(--text-soft);
+  transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), fill 0.2s ease;
+}
+.tab-credit .credit-by {
+  color: var(--text-soft);
+  font-weight: 500;
+}
+/* Name painted with a moving gradient (clipped to the glyphs). Static at idle,
+   animated on hover. */
+.tab-credit .credit-name {
+  background: linear-gradient(100deg,
+    var(--accent) 0%,
+    #7c5cff 30%,
+    #ff5ca8 55%,
+    #7c5cff 75%,
+    var(--accent) 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.tab-credit:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.tab-credit:hover .gh-icon {
+  transform: rotate(360deg) scale(1.12);
+  fill: var(--accent);
+}
+.tab-credit:hover .credit-name { animation: creditShimmer 1.1s linear infinite; }
+@keyframes creditShimmer {
+  to { background-position: 220% center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-credit .gh-icon { transition: fill 0.2s ease; }
+  .tab-credit:hover .gh-icon { transform: none; }
+  .tab-credit:hover .credit-name { animation: none; }
+}
+
 .settings-overlay {
   position: fixed;
   inset: 0;

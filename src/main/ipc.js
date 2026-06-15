@@ -355,6 +355,21 @@ function registerIpc({ openCscopeWindow, getInitialFolder }) {
     }
   });
 
+  // Open an external URL in the user's default browser. Restricted to http/https
+  // so a compromised renderer can't launch arbitrary protocol handlers.
+  ipcMain.handle('app:openExternal', async (_e, { url }) => {
+    try {
+      const u = new URL(String(url || ''));
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+        return { ok: false, error: `Blocked protocol: ${u.protocol}` };
+      }
+      await shell.openExternal(u.href);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
+
   // ---- cscope ----
   ipcMain.handle('cscope:info', (_e, { folder }) => cscope.info(path.resolve(folder)));
 

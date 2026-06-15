@@ -71,6 +71,8 @@ contextBridge.exposeInMainWorld('m2scout', {
   buildPreview: (params) => ipcRenderer.invoke('preview:build', params),
   openEditor: (params) => ipcRenderer.invoke('editor:open', params),
   openExplorer: (target) => ipcRenderer.invoke('fs:openExplorer', { target }),
+  // Open an external URL (http/https only) in the default browser.
+  openExternal: (url) => ipcRenderer.invoke('app:openExternal', { url }),
 
   // cscope
   cscope: {
