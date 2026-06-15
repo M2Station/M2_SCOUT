@@ -1196,6 +1196,53 @@ class Tab {
     this.debug(`[Enter] Opened ${ok}/${paths.length} file(s) in the editor`);
   }
 
+  // Open the selected files' location(s) in the OS file manager. Dedupes by
+  // parent folder so several files in the same directory open one window (the
+  // first is highlighted). Falls back to the single current file. Confirms
+  // before opening many windows.
+  async openSelectedInExplorer() {
+    let paths = this.selPaths.size
+      ? [...this.selPaths]
+      : (this.currentFile ? [this.currentFile] : []);
+    if (!paths.length) return;
+    const order = this._rowOrderPaths();
+    const pos = new Map(order.map((p, i) => [p, i]));
+    paths = paths.slice().sort((a, b) => (pos.get(a) ?? 0) - (pos.get(b) ?? 0));
+    const seen = new Set();
+    const targets = [];
+    for (const p of paths) {
+      const dir = String(p).replace(/[\\/][^\\/]*$/, '');
+      if (seen.has(dir)) continue;
+      seen.add(dir);
+      targets.push(p);
+    }
+    const LIMIT = 10;
+    if (targets.length > LIMIT) {
+      const msg = T('files.openManyExplorerConfirm', { n: targets.length });
+      if (!window.confirm(msg)) return;
+    }
+    let ok = 0;
+    for (const target of targets) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await S.openExplorer(target);
+      if (res && res.ok) ok += 1;
+      else if (res && res.error) S.showError('Open in File Explorer failed', res.error);
+    }
+    this.debug(`[ctx] Opened ${ok}/${targets.length} folder(s) in File Explorer`);
+  }
+
+  // Diff the two selected files in Beyond Compare (left = upper row, right =
+  // lower row in on-screen order). No-op unless exactly two are selected.
+  async compareSelectedInBeyondCompare() {
+    if (!this.selPaths || this.selPaths.size !== 2) return;
+    const order = this._rowOrderPaths();
+    const pos = new Map(order.map((p, i) => [p, i]));
+    const [left, right] = [...this.selPaths].sort((a, b) => (pos.get(a) ?? 0) - (pos.get(b) ?? 0));
+    const res = await S.compareInBeyondCompare(left, right);
+    if (res && res.ok) this.debug(`[ctx] Beyond Compare: ${left} <-> ${right}`);
+    else if (res && res.error) S.showError('Beyond Compare failed', res.error);
+  }
+
 
   _onFilesKey(e) {
     if (e.key === 'F1') { e.preventDefault(); this.copyAllFiles(); }
@@ -1505,6 +1552,18 @@ let ctxTab = null;
 function showFilesCtxMenu(x, y, tab) {
   ctxTab = tab;
   const menu = document.getElementById('filesCtxMenu');
+  // With 2+ files selected, collapse the menu to a single batch-open action;
+  // the per-file items (open in Explorer / copy path) only make sense for one.
+  const sel = (tab.selPaths && tab.selPaths.size) || 0;
+  const multi = sel > 1;
+  menu.querySelectorAll('.ctx-multi').forEach((el) => { el.hidden = !multi; });
+  const openItem = menu.querySelector('[data-cmd="openSelected"]');
+  if (openItem && multi) openItem.textContent = T('ctx.openFiles', { n: sel });
+  menu.querySelectorAll('.ctx-single').forEach((el) => { el.hidden = multi; });
+  // Beyond Compare diffs exactly two files, so the item shows only when 2 are
+  // selected AND Beyond Compare is installed. 3+ selected hides it.
+  const cmpItem = menu.querySelector('.ctx-compare');
+  if (cmpItem) cmpItem.hidden = !(sel === 2 && manager.beyondCompare && manager.beyondCompare.found);
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
   menu.hidden = false;
@@ -1516,7 +1575,10 @@ document.getElementById('filesCtxMenu').addEventListener('click', async (e) => {
   const cmd = e.target.dataset.cmd;
   if (!cmd || !ctxTab) return;
   const path = ctxTab.currentFile;
-  if (cmd === 'openExplorer') await S.openExplorer(path);
+  if (cmd === 'openSelected') ctxTab.openSelected();
+  else if (cmd === 'openSelectedExplorer') ctxTab.openSelectedInExplorer();
+  else if (cmd === 'compareBeyond') ctxTab.compareSelectedInBeyondCompare();
+  else if (cmd === 'openExplorer') await S.openExplorer(path);
   else if (cmd === 'copyPath') await navigator.clipboard.writeText(String(path).replace(/\//g, '\\'));
   else if (cmd === 'copyRelPath') await navigator.clipboard.writeText(String(S.path.relForDisplay(ctxTab.baseFolder, path)).replace(/\//g, '\\'));
   hideFilesCtxMenu();
@@ -1569,6 +1631,14 @@ async function boot() {
 
   const base = manager.add(true);
   base.loadFromIni(baseIniRaw);
+
+  // Detect Beyond Compare once; the files context menu uses this to decide
+  // whether to offer "Compare in Beyond Compare" (only when 2 files selected).
+  manager.beyondCompare = { found: false, path: '' };
+  try {
+    const bc = await S.detectBeyondCompare();
+    if (bc && bc.ok) manager.beyondCompare = { found: !!bc.found, path: bc.path || '' };
+  } catch (_e) { /* ignore - feature simply stays hidden */ }
 
   // Localise static + dynamic chrome, and re-localise when the language changes.
   if (window.M2I18n) window.M2I18n.apply(document);
