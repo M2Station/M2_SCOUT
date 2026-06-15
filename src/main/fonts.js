@@ -1,3 +1,12 @@
+/*
+ * M2_SCOUT
+ * Copyright (c) 2026 OA Hsiao
+ * SPDX-License-Identifier: MIT
+ *
+ * This source code is licensed under the MIT License found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 // ============================================================
 // M2_SCOUT - bundled font auto-install (Windows, per-user)
 // On startup we scan the FONTS/ directory and make sure every bundled

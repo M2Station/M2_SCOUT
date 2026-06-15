@@ -1,3 +1,12 @@
+/*
+ * M2_SCOUT
+ * Copyright (c) 2026 OA Hsiao
+ * SPDX-License-Identifier: MIT
+ *
+ * This source code is licensed under the MIT License found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 // ============================================================
 // M2_SCOUT - Exclude-folders picker popup
 // Reads the exclude groups from M2_SCOUT_EXCLUDE_GROUPS.ini (passed in by

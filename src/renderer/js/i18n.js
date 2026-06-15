@@ -1,3 +1,12 @@
+/*
+ * M2_SCOUT
+ * Copyright (c) 2026 OA Hsiao
+ * SPDX-License-Identifier: MIT
+ *
+ * This source code is licensed under the MIT License found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 // ============================================================
 // M2_SCOUT - i18n (framework-free port of M2_GIT_DIFF locales)
 // Flat dot-path keys, English + Traditional Chinese built in. Persists the
