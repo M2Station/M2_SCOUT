@@ -161,9 +161,12 @@
 
   <!-- Context menu for files list -->
   <div class="ctxmenu" id="filesCtxMenu" hidden>
-    <div class="ctxitem" data-cmd="openExplorer" data-i18n="ctx.openExplorer">Open in Explorer</div>
-    <div class="ctxitem" data-cmd="copyPath" data-i18n="ctx.copyPath">Copy path</div>
-    <div class="ctxitem" data-cmd="copyRelPath" data-i18n="ctx.copyRelPath">Copy relative path</div>
+    <div class="ctxitem ctx-compare" data-cmd="compareBeyond" data-i18n="ctx.compareBeyond" hidden>Compare in Beyond Compare</div>
+    <div class="ctxitem ctx-multi" data-cmd="openSelected" hidden></div>
+    <div class="ctxitem ctx-multi" data-cmd="openSelectedExplorer" data-i18n="ctx.openFilesExplorer" hidden>Open in File Explorer</div>
+    <div class="ctxitem ctx-single" data-cmd="openExplorer" data-i18n="ctx.openExplorer">Open in Explorer</div>
+    <div class="ctxitem ctx-single" data-cmd="copyPath" data-i18n="ctx.copyPath">Copy path</div>
+    <div class="ctxitem ctx-single" data-cmd="copyRelPath" data-i18n="ctx.copyRelPath">Copy relative path</div>
   </div>
 
   <script src="js/i18n.js"></script>

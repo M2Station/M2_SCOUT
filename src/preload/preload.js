@@ -82,6 +82,9 @@ contextBridge.exposeInMainWorld('m2scout', {
   openExplorer: (target) => ipcRenderer.invoke('fs:openExplorer', { target }),
   // Open an external URL (http/https only) in the default browser.
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', { url }),
+  // Beyond Compare: detect installation, and diff two files.
+  detectBeyondCompare: () => ipcRenderer.invoke('tools:detectBeyondCompare'),
+  compareInBeyondCompare: (left, right) => ipcRenderer.invoke('tools:beyondCompare', { left, right }),
 
   // cscope
   cscope: {

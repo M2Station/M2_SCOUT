@@ -19,6 +19,7 @@ const {
   ipcMain, dialog, shell, BrowserWindow,
 } = require('electron');
 const os = require('os');
+const { spawn } = require('child_process');
 
 const {
   DEBUG, UIConfig, EditorConfig, ToolConfig, PreviewConfig, HighlightConfig, LiveUpdateConfig, SearchConfig,
@@ -90,6 +91,36 @@ function startCpuSampler() {
   // delta rather than a meaningless 0.
   sysCpuPrev = cpuTimesSnapshot();
   cpuTimer = setInterval(sampleSystemCpu, SYS_CPU_INTERVAL_MS);
+}
+
+// ---- Beyond Compare discovery ----
+// Locate BCompare.exe (the launcher) under the usual Windows install roots.
+// Checks explicit known version folders first, then scans for any
+// "Beyond Compare*" folder so future major versions are picked up too.
+// Result is cached after the first lookup (undefined=unchecked, null=absent).
+let bcPathCache; // undefined | null | string
+function findBeyondCompare() {
+  if (process.platform !== 'win32') return null;
+  const roots = [
+    process.env.ProgramW6432,
+    process.env['ProgramFiles'],
+    process.env['ProgramFiles(x86)'],
+  ].filter(Boolean);
+  const candidates = [];
+  for (const root of roots) {
+    for (const v of ['Beyond Compare 5', 'Beyond Compare 4', 'Beyond Compare 3', 'Beyond Compare']) {
+      candidates.push(path.join(root, v, 'BCompare.exe'));
+    }
+    try {
+      for (const name of fs.readdirSync(root)) {
+        if (/^beyond compare/i.test(name)) candidates.push(path.join(root, name, 'BCompare.exe'));
+      }
+    } catch (_e) { /* root unreadable - ignore */ }
+  }
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) return c; } catch (_e) { /* ignore */ }
+  }
+  return null;
 }
 
 function validateExe(exe, name) {
@@ -373,6 +404,32 @@ function registerIpc({ openCscopeWindow, getInitialFolder }) {
         return { ok: false, error: `Blocked protocol: ${u.protocol}` };
       }
       await shell.openExternal(u.href);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
+
+  // ---- Beyond Compare integration ----
+  ipcMain.handle('tools:detectBeyondCompare', () => {
+    if (bcPathCache === undefined) bcPathCache = findBeyondCompare();
+    return { ok: true, found: !!bcPathCache, path: bcPathCache || '' };
+  });
+
+  // Launch Beyond Compare on exactly two files. Detached so closing the tool's
+  // window never affects the compare session.
+  ipcMain.handle('tools:beyondCompare', (_e, { left, right }) => {
+    try {
+      if (bcPathCache === undefined) bcPathCache = findBeyondCompare();
+      if (!bcPathCache) return { ok: false, error: 'Beyond Compare not found' };
+      const l = path.normalize(String(left || ''));
+      const r = path.normalize(String(right || ''));
+      if (!l || !r) return { ok: false, error: 'Two files are required' };
+      if (!fs.existsSync(l)) return { ok: false, error: `Not found: ${l}` };
+      if (!fs.existsSync(r)) return { ok: false, error: `Not found: ${r}` };
+      const child = spawn(bcPathCache, [l, r], { detached: true, windowsHide: false });
+      child.on('error', () => { /* swallow: async spawn error must not crash main */ });
+      child.unref();
       return { ok: true };
     } catch (err) {
       return { ok: false, error: String(err) };

@@ -534,6 +534,7 @@ body { display: flex; flex-direction: column; }
 }
 .ctxmenu[hidden] { display: none; }
 .ctxitem { padding: 5px 12px; cursor: pointer; }
+.ctxitem[hidden] { display: none; }
 .ctxitem:hover { background: var(--ctxmenu-hover); }
 
 /* ---------- Settings (gear button + popup) ---------- */
