@@ -121,9 +121,14 @@ if (-not $Publish) {
 
 # --- publish: pre-flight git checks ------------------------------------------
 Write-Step 'Pre-flight git checks'
-$branchNow = (git rev-parse --abbrev-ref HEAD).Trim()
+$branchRaw = git rev-parse --abbrev-ref HEAD
+if ($LASTEXITCODE -ne 0) { Fail 'Unable to determine current git branch.' }
+$branchNow = ($branchRaw | Out-String).Trim()
 if ($branchNow -ne $Branch) { Fail "On branch '$branchNow' but expected '$Branch'. Checkout $Branch first." }
-if ((git status --porcelain).Trim()) { Fail 'Working tree is not clean. Commit or stash changes first.' }
+$statusRaw = git status --porcelain
+if ($LASTEXITCODE -ne 0) { Fail 'Unable to read git working tree status.' }
+$statusText = ($statusRaw | Out-String).Trim()
+if ($statusText) { Fail 'Working tree is not clean. Commit or stash changes first.' }
 git fetch --tags --quiet
 $existing = (git tag --list $tag)
 if ($existing) { Fail "Tag $tag already exists. Pick a new version." }
