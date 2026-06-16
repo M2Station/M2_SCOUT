@@ -1,5 +1,7 @@
 # M2_SCOUT
 
+[English](README.md) | [繁體中文](README.zh-TW.md)
+
 **M2_SCOUT** is a Node.js / Electron port of **M2 SEEK** — a desktop GUI search tool built
 on top of [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`),
 [fd](https://github.com/sharkdp/fd), and [cscope](https://cscope.sourceforge.net/).
@@ -7,6 +9,32 @@ on top of [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`),
 It is a faithful re-implementation of the original Python/Tkinter app
 (`../M2_SEEK.py`). All features are aligned with M2 SEEK. Settings are stored in
 its own **INI files** (`M2_SCOUT.ini`, `M2_SCOUT_EXCLUDE_GROUPS.ini`, `M2_SCOUT_HL.ini`).
+
+---
+
+## Animated demo
+
+### Full app workflow animation
+
+![M2_SCOUT full workflow demo](docs/demo-full-workflow.svg)
+
+This animation highlights the complete user journey:
+- multi-tab workflow,
+- OR / parallel AND search,
+- live FILES updates,
+- preview highlight + F3 / Shift+F3,
+- in-preview Ctrl+F popup search,
+- cscope flow.
+
+### `rg.exe` parallel workers + CPU pressure animation
+
+![M2_SCOUT rg parallel CPU demo](docs/demo-rg-cpu.svg)
+
+M2_SCOUT launches multiple `rg.exe` workers in parallel for AND mode and can drive CPU usage very high on large repositories.
+
+### Legacy preview-only animation
+
+![M2_SCOUT preview find demo](docs/demo-preview-find.svg)
 
 ---
 
@@ -112,7 +140,8 @@ skill runs this flow for you.
 | Filename search (fd) | ✅ | ✅ |
 | Preview ±10 lines, merged blocks | ✅ | ✅ |
 | Syntax highlight (HL INI) | ✅ Tk tags | ✅ DOM spans, same priority layering |
-| Keyword highlight + F3 next | ✅ | ✅ |
+| Keyword highlight + F3 next / Shift+F3 prev | ✅ | ✅ |
+| Preview in-pane find (Ctrl+F popup + count + next/prev) | ❌ | ✅ |
 | Editor integration (open at line) | ✅ template `$(FILEPATH)/$(LINENUM)` | ✅ same template, 740-elevation fallback |
 | FILES HL / Filter coloring | ✅ F2/F3/F4 | ✅ F2/F3/F4 |
 | F1 copy all results | ✅ | ✅ |
@@ -132,8 +161,11 @@ skill runs this flow for you.
 | `Esc` | stop running search |
 | `Ctrl+T` / `Ctrl+W` | new / close tab |
 | `Alt+Down` | focus FILES list |
+| `Ctrl+Right` | focus Preview first match |
 | FILES `F1/F2/F3/F4` | copy all / HL / Dim / clear |
-| Preview `F3` | next keyword match |
+| Preview `F3` / `Shift+F3` | next / previous keyword match |
+| Preview `Ctrl+F` | open in-preview floating find box |
+| Preview find `Enter` / `Shift+Enter` | next / previous in-preview match |
 | Preview `Ctrl + / Ctrl -` | zoom |
 | Preview right-click | open in editor at clicked line |
 

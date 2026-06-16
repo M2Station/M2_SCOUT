@@ -1,0 +1,223 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="920" viewBox="0 0 1600 920" role="img" aria-label="M2_SCOUT multi scene workflow animation in VS Code style">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#1f2937"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#161b22"/>
+      <stop offset="100%" stop-color="#0f141b"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 36px Segoe UI, Arial, sans-serif; fill: #e6edf3; }
+      .sub { font: 500 18px Segoe UI, Arial, sans-serif; fill: #9da7b3; }
+      .hdr { font: 700 15px Segoe UI, Arial, sans-serif; fill: #c9d1d9; }
+      .text { font: 500 14px Segoe UI, Arial, sans-serif; fill: #b1bac4; }
+      .mono { font: 500 14px Consolas, Menlo, monospace; fill: #c9d1d9; }
+      .muted { fill: #7d8590; }
+      .ok { fill: #3fb950; }
+      .warn { fill: #e3b341; }
+      .acc { fill: #58a6ff; }
+      .pink { fill: #bc8cff; }
+      .hot { fill: #f85149; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="920" fill="url(#bg)"/>
+
+  <text x="40" y="58" class="title">M2_SCOUT Feature Walkthrough</text>
+  <text x="40" y="88" class="sub">VS Code inspired dark style | 6 scenes | 60%+ feature coverage</text>
+
+  <rect x="34" y="114" width="1532" height="770" rx="14" fill="url(#panel)" stroke="#30363d"/>
+
+  <rect x="34" y="114" width="1532" height="44" rx="14" fill="#0f141b" stroke="#30363d"/>
+  <circle cx="60" cy="136" r="7" fill="#f85149"/>
+  <circle cx="84" cy="136" r="7" fill="#e3b341"/>
+  <circle cx="108" cy="136" r="7" fill="#3fb950"/>
+  <text x="132" y="141" class="hdr">M2_SCOUT.exe</text>
+
+  <rect x="38" y="170" width="1524" height="52" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="58" y="202" class="mono">SCENE 1: Tabs + OR/AND + Include/Exclude + Live FILES</text>
+  <text x="840" y="202" class="mono muted">SCENE 2: Preview highlight + F3/Shift+F3 + Ctrl+F popup</text>
+  <text x="58" y="852" class="sub">Then: Scene 3 (fd filename search) -> Scene 4 (files color F2/F3/F4 + copy F1) -> Scene 5 (cscope) -> Scene 6 (editor open + zoom + stop/esc)</text>
+
+  <g id="scene1" opacity="0">
+    <animate attributeName="opacity" values="0;1;1;0;0;0;0" keyTimes="0;0.02;0.155;0.18;0.18;1;1" dur="30s" repeatCount="indefinite"/>
+
+    <rect x="60" y="244" width="460" height="560" rx="10" fill="#0d1117" stroke="#30363d"/>
+    <rect x="540" y="244" width="980" height="560" rx="10" fill="#0d1117" stroke="#30363d"/>
+
+    <text x="78" y="276" class="hdr">CONTROL</text>
+    <rect x="78" y="292" width="420" height="34" rx="6" fill="#161b22" stroke="#30363d"/>
+    <text x="92" y="314" class="mono">Tabs: TAB BASE | TAB 2 | TAB 3 | Ctrl+T | Ctrl+W</text>
+
+    <rect x="78" y="340" width="420" height="130" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="92" y="364" class="mono">keywords: "preview" "find" "renderer"</text>
+    <text x="92" y="388" class="mono">mode: OR -> AND (parallel workers)</text>
+    <text x="92" y="412" class="mono">case: off, ignore: on</text>
+    <text x="92" y="436" class="mono">include: *.js *.html *.css</text>
+    <text x="92" y="460" class="mono">exclude groups: exd_build exf_min</text>
+
+    <text x="78" y="504" class="hdr">FILES (live updates while searching)</text>
+    <rect x="78" y="520" width="420" height="264" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="92" y="546" class="mono">[18] src/renderer/js/renderer.js</text>
+    <text x="92" y="572" class="mono">[10] src/renderer/index.html</text>
+    <text x="92" y="598" class="mono">[09] src/renderer/css/style.css</text>
+    <text x="92" y="624" class="mono">[04] src/main/search.js</text>
+    <text x="92" y="650" class="mono">[03] src/main/rg.js</text>
+
+    <rect x="92" y="668" width="392" height="12" rx="4" fill="#21262d"/>
+    <rect x="92" y="688" width="392" height="12" rx="4" fill="#21262d"/>
+    <rect x="92" y="708" width="392" height="12" rx="4" fill="#21262d"/>
+    <rect x="92" y="728" width="392" height="12" rx="4" fill="#21262d"/>
+
+    <rect x="92" y="668" width="30" height="12" rx="4" fill="#58a6ff">
+      <animate attributeName="width" values="22;360;392;240;390;20" dur="2.6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="92" y="688" width="30" height="12" rx="4" fill="#79c0ff">
+      <animate attributeName="width" values="18;340;392;260;380;26" dur="2.2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="92" y="708" width="30" height="12" rx="4" fill="#a5d6ff">
+      <animate attributeName="width" values="25;330;385;300;392;18" dur="2.9s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="92" y="728" width="30" height="12" rx="4" fill="#58a6ff">
+      <animate attributeName="width" values="20;350;392;290;375;24" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+
+    <text x="560" y="276" class="hdr">PREVIEW</text>
+    <rect x="560" y="292" width="940" height="492" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="578" y="324" class="mono">0118 function _highlight() {</text>
+    <text x="578" y="350" class="mono">0119   this.els.preview.innerHTML = html;</text>
+    <text x="578" y="376" class="mono">0120   this._applyPreviewFindHighlights();</text>
+    <text x="578" y="402" class="mono">0121 }</text>
+    <text x="578" y="444" class="mono">0138 if (e.ctrlKey &amp;&amp; (e.key === 'f' || e.key === 'F')) {</text>
+    <text x="578" y="470" class="mono">0139   e.preventDefault();</text>
+    <text x="578" y="496" class="mono">0140   this.openPreviewFind();</text>
+
+    <rect x="578" y="334" width="220" height="24" fill="#264f78" opacity="0.6"/>
+    <rect x="578" y="454" width="220" height="24" fill="#264f78" opacity="0.6"/>
+
+    <rect x="560" y="796" width="940" height="38" rx="8" fill="#0d1117" stroke="#30363d"/>
+    <text x="578" y="821" class="mono">Running rg --json --stats --fixed-strings   |   STATUS: SEARCHING   |   ESC to stop</text>
+  </g>
+
+  <g id="scene2" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;1;1;0;0" keyTimes="0;0.18;0.185;0.20;0.325;0.35;1" dur="30s" repeatCount="indefinite"/>
+
+    <rect x="86" y="262" width="1428" height="520" rx="10" fill="#0d1117" stroke="#30363d"/>
+    <text x="110" y="296" class="hdr">PREVIEW NAVIGATION</text>
+    <text x="320" y="296" class="text">F3 next | Shift+F3 prev | Ctrl+F in preview</text>
+
+    <rect x="110" y="318" width="1380" height="438" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="132" y="352" class="mono">0094 preview find keeps local focus; does not trigger main keyword box</text>
+    <text x="132" y="378" class="mono">0095 defaultPrevented guard blocks global hotkey override</text>
+    <text x="132" y="404" class="mono">0096 matches highlighted as .pvfind and .pvfind-current</text>
+    <text x="132" y="430" class="mono">0097 count badge shows 2/7 while cycling next/prev</text>
+    <text x="132" y="456" class="mono">0098 Shift+F3 in preview moves upward as expected</text>
+
+    <rect x="1260" y="328" width="210" height="30" rx="6" fill="#238636"/>
+    <text x="1280" y="349" class="mono">Ctrl+F (preview)</text>
+
+    <rect x="1000" y="370" width="470" height="52" rx="8" fill="#1f2937" stroke="#58a6ff" opacity="0">
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.2;0.8;1" dur="4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="1018" y="383" width="220" height="28" rx="4" fill="#0d1117" stroke="#30363d" opacity="0">
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.2;0.8;1" dur="4s" repeatCount="indefinite"/>
+    </rect>
+    <text x="1030" y="402" class="mono" opacity="0">
+      preview
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.2;0.8;1" dur="4s" repeatCount="indefinite"/>
+    </text>
+    <text x="1260" y="402" class="mono" opacity="0">
+      Up  Down  2/7  X
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.2;0.8;1" dur="4s" repeatCount="indefinite"/>
+    </text>
+
+    <rect x="132" y="391" width="430" height="22" fill="#1f6feb" opacity="0">
+      <animate attributeName="opacity" values="0;0.2;1;0.2;0" keyTimes="0;0.2;0.45;0.75;1" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="132" y="443" width="430" height="22" fill="#bc8cff" opacity="0">
+      <animate attributeName="opacity" values="0;0.2;0.2;1;0" keyTimes="0;0.2;0.45;0.75;1" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+
+  <g id="scene3" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;1;1;0;0" keyTimes="0;0.35;0.355;0.37;0.49;0.50;0.655;0.68;1" dur="30s" repeatCount="indefinite"/>
+
+    <rect x="86" y="262" width="700" height="520" rx="10" fill="#0d1117" stroke="#30363d"/>
+    <rect x="814" y="262" width="700" height="520" rx="10" fill="#0d1117" stroke="#30363d"/>
+
+    <text x="110" y="296" class="hdr">FILENAME SEARCH (fd)</text>
+    <text x="836" y="296" class="hdr">FILES ACTIONS</text>
+
+    <rect x="110" y="318" width="652" height="82" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="128" y="346" class="mono">fd pattern: renderer</text>
+    <text x="128" y="372" class="mono">cmd: fd --full-path --color never "renderer" src/</text>
+
+    <rect x="110" y="420" width="652" height="338" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="128" y="450" class="mono">src/renderer/js/renderer.js</text>
+    <text x="128" y="476" class="mono">src/renderer/js/highlight.js</text>
+    <text x="128" y="502" class="mono">src/renderer/css/style.css</text>
+    <text x="128" y="528" class="mono">src/renderer/index.html</text>
+
+    <rect x="836" y="318" width="652" height="438" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="854" y="352" class="mono">F1 copy all results</text>
+    <text x="854" y="378" class="mono">F2 highlight selected file</text>
+    <text x="854" y="404" class="mono">F3 dim selected file</text>
+    <text x="854" y="430" class="mono">F4 clear color state</text>
+
+    <rect x="854" y="464" width="530" height="30" fill="#238636" opacity="0.6"/>
+    <text x="868" y="485" class="mono">[F2] src/renderer/js/renderer.js</text>
+    <rect x="854" y="502" width="530" height="30" fill="#6e7681" opacity="0.45"/>
+    <text x="868" y="523" class="mono">[F3] src/renderer/css/style.css</text>
+    <rect x="854" y="540" width="530" height="30" fill="#1f6feb" opacity="0.55"/>
+    <text x="868" y="561" class="mono">[F1] copied 41 lines to clipboard</text>
+  </g>
+
+  <g id="scene4" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0;0;1;1;0;0" keyTimes="0;0.68;0.685;0.70;0.81;0.82;0.975;0.98;0.995;1;1" dur="30s" repeatCount="indefinite"/>
+
+    <rect x="86" y="262" width="1428" height="520" rx="10" fill="#0d1117" stroke="#30363d"/>
+    <text x="110" y="296" class="hdr">CSCOPE FLOW + EDITOR INTEGRATION + STOP/ESC + ZOOM</text>
+
+    <rect x="110" y="318" width="520" height="438" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="128" y="352" class="mono">1) GEN cscope.files</text>
+    <text x="128" y="378" class="mono">2) Build cscope.out</text>
+    <text x="128" y="404" class="mono">3) Query mode: symbol / callers / callees</text>
+    <text x="128" y="430" class="mono">4) Click result -> preview line jump</text>
+
+    <rect x="128" y="456" width="470" height="26" fill="#1f6feb" opacity="0.45"/>
+    <text x="142" y="474" class="mono">find this C symbol: _applyPreviewFindHighlights</text>
+    <rect x="128" y="492" width="470" height="26" fill="#238636" opacity="0.45"/>
+    <text x="142" y="510" class="mono">called by: _onPreviewFindInput</text>
+    <rect x="128" y="528" width="470" height="26" fill="#8b949e" opacity="0.45"/>
+    <text x="142" y="546" class="mono">line: src/renderer/js/renderer.js:1384</text>
+
+    <rect x="656" y="318" width="834" height="438" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="674" y="352" class="mono">Right-click preview -> open in editor with line template $(FILEPATH):$(LINENUM)</text>
+    <text x="674" y="378" class="mono">Ctrl + and Ctrl - -> preview zoom in/out</text>
+    <text x="674" y="404" class="mono">Esc -> stop current rg process</text>
+
+    <rect x="674" y="438" width="780" height="36" rx="6" fill="#1f2937" stroke="#30363d"/>
+    <text x="690" y="462" class="mono">code -g src/renderer/js/renderer.js:1384</text>
+
+    <rect x="674" y="496" width="240" height="34" rx="6" fill="#2f81f7"/>
+    <text x="700" y="519" class="mono">Ctrl + (zoom in)</text>
+    <rect x="930" y="496" width="240" height="34" rx="6" fill="#2f81f7"/>
+    <text x="958" y="519" class="mono">Ctrl - (zoom out)</text>
+
+    <rect x="1188" y="496" width="266" height="34" rx="6" fill="#f85149"/>
+    <text x="1240" y="519" class="mono">ESC STOP</text>
+
+    <rect x="674" y="560" width="780" height="170" rx="8" fill="#0d1117" stroke="#30363d"/>
+    <text x="692" y="592" class="mono">STATUS: running search ...</text>
+    <text x="692" y="620" class="mono">Keyboard routing fixed: preview Ctrl+F does not hit global keyword box</text>
+    <text x="692" y="648" class="mono">Shift+F3 in preview moves to previous match (upward)</text>
+    <text x="692" y="676" class="mono">Ctrl+Right preserved for preview navigation</text>
+  </g>
+
+  <g>
+    <rect x="1180" y="178" width="362" height="36" rx="6" fill="#161b22" stroke="#30363d"/>
+    <text x="1200" y="201" class="mono">Coverage: 15+ features shown (>= 60%)</text>
+  </g>
+</svg>
