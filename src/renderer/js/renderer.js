@@ -272,6 +272,9 @@ class Tab {
     this.f3RunsMap = new Map();
     this.f3Ids = [];
     this.f3Index = -1;
+    this.previewFindText = '';
+    this.previewFindSpans = [];
+    this.previewFindIndex = -1;
 
     this.saveTimer = null;
     this.recolorTimer = null;
@@ -341,6 +344,10 @@ class Tab {
     act('toggleSort', () => this.toggleSort());
     act('treeCollapseAll', () => this.treeSetAllCollapsed(true));
     act('treeExpandAll', () => this.treeSetAllCollapsed(false));
+    act('togglePreviewFind', () => this.openPreviewFind());
+    act('previewFindPrev', () => this.previewFindPrev());
+    act('previewFindNext', () => this.previewFindNext());
+    act('previewFindClose', () => this.closePreviewFind());
     act('toggleDebug', () => this._toggleDebug());
     act('copyDebug', () => this._copyDebug());
     act('clearDebug', () => { this.els.debug.textContent = ''; });
@@ -385,6 +392,10 @@ class Tab {
     const pv = this.els.preview;
     pv.addEventListener('contextmenu', (e) => this._onPreviewContext(e));
     pv.addEventListener('keydown', (e) => this._onPreviewKey(e));
+    if (this.els.previewFindInput) {
+      this.els.previewFindInput.addEventListener('input', () => this._onPreviewFindInput());
+      this.els.previewFindInput.addEventListener('keydown', (e) => this._onPreviewFindKey(e));
+    }
 
     // splitter drag
     this._wireSplitter();
@@ -1338,11 +1349,11 @@ class Tab {
     else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.selectAllFiles(); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); this._navFiles(1, e.shiftKey); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); this._navFiles(-1, e.shiftKey); }
-    else if (e.key === 'ArrowLeft' && this.viewMode === 'tree') {
+    else if (!e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft' && this.viewMode === 'tree') {
       e.preventDefault();
       this._treeCollapseAndStay();
     }
-    else if (e.key === 'ArrowRight' && this.viewMode === 'tree') {
+    else if (!e.ctrlKey && !e.metaKey && e.key === 'ArrowRight' && this.viewMode === 'tree') {
       e.preventDefault();
       this._treeExpandSelectedFolder();
     }
@@ -1685,6 +1696,7 @@ class Tab {
     const keywords = parseKeywords(this.val('keywords'));
     const { html } = HLR.buildHighlightedHtml(text, sections, keywords, this.checked('caseSensitive'));
     this.els.preview.innerHTML = html;
+    this._applyPreviewFindHighlights();
     // collect F3 runs
     this.f3RunsMap = new Map();
     this.els.preview.querySelectorAll('[data-hl]').forEach((sp) => {
@@ -1705,14 +1717,144 @@ class Tab {
     if (spans[0]) spans[0].scrollIntoView({ block: 'center' });
   }
 
+  f3Prev() {
+    if (!this.f3Ids.length) return;
+    if (this.f3Index < 0) this.f3Index = 0;
+    this.f3Index = (this.f3Index - 1 + this.f3Ids.length) % this.f3Ids.length;
+    this.els.preview.querySelectorAll('.f3hit').forEach((sp) => sp.classList.remove('f3hit'));
+    const spans = this.f3RunsMap.get(this.f3Ids[this.f3Index]) || [];
+    spans.forEach((sp) => sp.classList.add('f3hit'));
+    if (spans[0]) spans[0].scrollIntoView({ block: 'center' });
+  }
+
   _onPreviewKey(e) {
-    if (e.key === 'F3') { e.preventDefault(); this.f3Next(); }
+    if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+      e.preventDefault();
+      this.openPreviewFind();
+    }
+    else if (e.key === 'F3') {
+      e.preventDefault();
+      if (e.shiftKey) this.f3Prev();
+      else this.f3Next();
+    }
     else if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); this.zoom(1); }
     else if (e.ctrlKey && e.key === '-') { e.preventDefault(); this.zoom(-1); }
   }
   zoom(delta) {
     this.previewFontSize = Math.max(8, Math.min(40, this.previewFontSize + delta));
     this.els.preview.style.fontSize = `${this.previewFontSize}px`;
+  }
+
+  openPreviewFind() {
+    const pop = this.els.previewFindPop;
+    const input = this.els.previewFindInput;
+    if (!pop || !input) return;
+    pop.hidden = false;
+    input.focus();
+    input.select();
+  }
+
+  closePreviewFind() {
+    const pop = this.els.previewFindPop;
+    if (pop) pop.hidden = true;
+    this.els.preview.focus();
+  }
+
+  _onPreviewFindInput() {
+    this.previewFindText = (this.els.previewFindInput.value || '').trim();
+    this._highlight();
+  }
+
+  _onPreviewFindKey(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      this.closePreviewFind();
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) this.previewFindPrev();
+      else this.previewFindNext();
+    }
+  }
+
+  _applyPreviewFindHighlights() {
+    const query = (this.previewFindText || '').trim();
+    this.previewFindSpans = [];
+    this.previewFindIndex = -1;
+    this._updatePreviewFindCount();
+    if (!query) return;
+
+    const preview = this.els.preview;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(escaped, 'gi');
+    const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeValue && node.nodeValue.length) textNodes.push(node);
+    }
+
+    for (const tn of textNodes) {
+      const src = tn.nodeValue;
+      re.lastIndex = 0;
+      if (!re.test(src)) continue;
+      re.lastIndex = 0;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      let m;
+      while ((m = re.exec(src))) {
+        const start = m.index;
+        const end = start + m[0].length;
+        if (start > last) frag.appendChild(document.createTextNode(src.slice(last, start)));
+        const sp = document.createElement('span');
+        sp.className = 'pvfind';
+        sp.textContent = src.slice(start, end);
+        frag.appendChild(sp);
+        last = end;
+      }
+      if (last < src.length) frag.appendChild(document.createTextNode(src.slice(last)));
+      tn.parentNode.replaceChild(frag, tn);
+    }
+
+    this.previewFindSpans = Array.from(preview.querySelectorAll('.pvfind'));
+    if (this.previewFindSpans.length) {
+      this.previewFindIndex = 0;
+      this._setPreviewFindCurrent(this.previewFindIndex, false);
+    }
+    this._updatePreviewFindCount();
+  }
+
+  _setPreviewFindCurrent(idx, scroll) {
+    if (!this.previewFindSpans.length) return;
+    this.previewFindSpans.forEach((sp) => sp.classList.remove('pvfind-current'));
+    const n = ((idx % this.previewFindSpans.length) + this.previewFindSpans.length) % this.previewFindSpans.length;
+    this.previewFindIndex = n;
+    const cur = this.previewFindSpans[n];
+    cur.classList.add('pvfind-current');
+    if (scroll) cur.scrollIntoView({ block: 'center' });
+    this._updatePreviewFindCount();
+  }
+
+  previewFindNext() {
+    if (!this.previewFindSpans.length) return;
+    this._setPreviewFindCurrent(this.previewFindIndex + 1, true);
+  }
+
+  previewFindPrev() {
+    if (!this.previewFindSpans.length) return;
+    this._setPreviewFindCurrent(this.previewFindIndex - 1, true);
+  }
+
+  _updatePreviewFindCount() {
+    const el = this.els.previewFindCount;
+    if (!el) return;
+    const total = this.previewFindSpans.length;
+    if (!total) {
+      el.textContent = '0/0';
+      return;
+    }
+    el.textContent = `${this.previewFindIndex + 1}/${total}`;
   }
 
   _onPreviewContext(e) {
@@ -1893,6 +2035,7 @@ window.addEventListener('blur', hideFilesCtxMenu);
 window.addEventListener('keydown', (e) => {
   const tab = manager.currentTab();
   if (!tab) return;
+  if (e.defaultPrevented) return;
   const wantsFocusFiles = (e.ctrlKey || e.metaKey) && !e.altKey && e.key === 'ArrowLeft';
   if (wantsFocusFiles) {
     if (tab.files && tab.files.length) {
