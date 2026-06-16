@@ -15,7 +15,8 @@
 'use strict';
 
 const fs = require('fs');
-const { iniPath, excludeGroupIniPath, hlIniPath } = require('./paths');
+const path = require('path');
+const { iniPath, excludeGroupIniPath, hlIniPath, settingsDir, appDir } = require('./paths');
 
 // Parse an INI string into { section: { key: value } } (sections & keys lowercased).
 function parseIni(text) {
@@ -67,22 +68,57 @@ function readFileSafe(p) {
   return null;
 }
 
+// When running as a packaged app, INI files live in settingsDir() (userData).
+// On first run that directory has no INI files yet.  If a same-named file
+// exists next to the exe (placed there by the installer as a template or
+// carried over from an older dev run), copy it so the user's previous
+// settings are preserved.  The copy is best-effort; failure is silently
+// ignored.
+function migrateIniIfNeeded(destPath) {
+  if (fs.existsSync(destPath)) return; // already present – nothing to do
+  try {
+    const srcPath = path.join(appDir(), path.basename(destPath));
+    if (srcPath !== destPath && fs.existsSync(srcPath)) {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  } catch (_e) {
+    /* best-effort */
+  }
+}
+
+// Ensure the directory for a settings file exists (in case userData dir was
+// just created and subdirectories are needed).
+function ensureDir(filePath) {
+  try {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch (_e) {
+    /* ignore */
+  }
+}
+
 // ---- main settings INI ([search]) ----
 function loadIniRaw() {
-  const text = readFileSafe(iniPath());
+  const p = iniPath();
+  migrateIniIfNeeded(p);
+  const text = readFileSafe(p);
   if (!text) return {};
   const parsed = parseIni(text);
   return parsed.search ? { ...parsed.search } : {};
 }
 
 function saveIniRaw(data) {
+  const p = iniPath();
+  ensureDir(p);
   const out = serializeSection('search', data || {});
-  fs.writeFileSync(iniPath(), out, 'utf8');
+  fs.writeFileSync(p, out, 'utf8');
 }
 
 // ---- exclude group INI ([groups]) ----
 function loadExcludeGroupIni() {
-  const text = readFileSafe(excludeGroupIniPath());
+  const p = excludeGroupIniPath();
+  migrateIniIfNeeded(p);
+  const text = readFileSafe(p);
   if (!text) return {};
   const parsed = parseIni(text);
   return parsed.groups ? { ...parsed.groups } : {};
@@ -90,6 +126,7 @@ function loadExcludeGroupIni() {
 
 function ensureExcludeGroupIniExists() {
   const p = excludeGroupIniPath();
+  migrateIniIfNeeded(p);
   if (fs.existsSync(p)) return;
   const groups = {
     exd_1: '.git;node_modules;build;dist;out;bin;obj;.vs',
@@ -103,6 +140,7 @@ function ensureExcludeGroupIniExists() {
 // ---- highlight INI (multiple sections) ----
 function ensureHlIniExists() {
   const p = hlIniPath();
+  migrateIniIfNeeded(p);
   if (fs.existsSync(p)) return;
   const sections = {
     common: {
