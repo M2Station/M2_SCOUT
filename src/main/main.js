@@ -29,6 +29,10 @@ const { version: APP_VERSION } = require('../../package.json');
 // shader disk cache removes those errors with no visible impact for this tool.
 // Must run before the app is ready.
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+// Ensure pinned taskbar shortcut resolves to this app identity on Windows.
+// Without an explicit AppUserModelID, Windows can show inconsistent icon
+// sizing/grouping for pinned shortcuts in some environments.
+app.setAppUserModelId('com.m2station.m2scout');
 
 let mainWindow = null;
 // Folder passed on the command line (e.g. from the Explorer right-click menu).
