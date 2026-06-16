@@ -359,10 +359,11 @@ function registerIpc({ openCscopeWindow, getInitialFolder, getStartupLogs }) {
   });
 
   // ---- preview ----
-  ipcMain.handle('preview:build', (_e, { filePath, keywords, caseSensitive }) => {
+  ipcMain.handle('preview:build', (_e, { filePath, keywords, caseSensitive, contextLines }) => {
     try {
       const kws = Array.isArray(keywords) ? keywords : parseKeywords(keywords);
-      const text = buildPreviewText(filePath, kws, !!caseSensitive, PreviewConfig.CONTEXT_LINES);
+      const lines = (typeof contextLines === 'number' && contextLines > 0) ? contextLines : PreviewConfig.CONTEXT_LINES;
+      const text = buildPreviewText(filePath, kws, !!caseSensitive, lines);
       return { ok: true, text };
     } catch (err) {
       return { ok: false, text: `(Preview build failed)\n${err}\n` };

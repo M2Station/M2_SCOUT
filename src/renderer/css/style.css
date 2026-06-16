@@ -388,6 +388,7 @@ body { display: flex; flex-direction: column; }
 }
 .tree-folderrow { cursor: pointer; }
 .tree-folderrow:hover { background: var(--row-hover); }
+.tree-folderrow.selected { background: var(--row-selected); }
 /* Folder names are structural scaffolding -> de-emphasize so the selectable
    file leaves visually dominate. */
 .tree-folderrow .tree-name { color: var(--muted); }
@@ -771,8 +772,8 @@ body { display: flex; flex-direction: column; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  direction: rtl; /* keep the tail (current folder) visible when truncated */
-  text-align: left;
+  direction: ltr;
+  text-align: right; /* keep the tail visible without reversing C:\ into \:C */
 }
 .folderpick-filter {
   font-family: var(--font-code);

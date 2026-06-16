@@ -237,6 +237,8 @@ class Tab {
     this.running = false;
     this.selIdx = -1;
     this.selPath = null;
+    // For tree view: track if current selection is a folder, and store its key.
+    this.selFolderKey = null;
     // Multi-selection (U3): a Set of selected file PATHS (survives re-sort /
     // rebuild, unlike indices). selAnchorPath is the shift-range anchor. The
     // primary single selection (selIdx/selPath) drives the preview.
@@ -308,6 +310,7 @@ class Tab {
     this.setVal('filter', '*.*');
     this.setVal('editorCmd', d.editorCmd);
     this.setVal('editorArgs', d.editorArgs);
+    this.setVal('previewContextLines', String(CONFIG.PreviewConfig.CONTEXT_LINES));
     this.setMode('OR');
     this.fields.caseSensitive.checked = true;
     this.fields.respectIgnore.checked = true;
@@ -416,7 +419,8 @@ class Tab {
   copyFrom(src) {
     if (!src || src === this) return;
     const TEXT = ['rgExe', 'fdExe', 'folder', 'filter', 'excludeDirs',
-      'excludeFiles', 'excludeGroupKeys', 'keywords', 'editorCmd', 'editorArgs'];
+      'excludeFiles', 'excludeGroupKeys', 'keywords', 'editorCmd', 'editorArgs',
+      'previewContextLines'];
     for (const name of TEXT) this.setVal(name, src.val(name));
     if (this.fields.caseSensitive && src.fields.caseSensitive) {
       this.fields.caseSensitive.checked = src.fields.caseSensitive.checked;
@@ -446,6 +450,10 @@ class Tab {
     if (g('editor_cmd')) this.setVal('editorCmd', g('editor_cmd'));
     this._updateEditorReadout();
     if (g('editor_args')) this.setVal('editorArgs', g('editor_args'));
+    if (g('preview_context_lines') !== undefined) {
+      const n = parseInt(g('preview_context_lines'), 10);
+      if (!Number.isNaN(n) && n > 0) this.setVal('previewContextLines', String(n));
+    }
   }
 
   scheduleSave() {
@@ -473,6 +481,7 @@ class Tab {
       respect_ignore_files: this.checked('respectIgnore') ? 'true' : 'false',
       editor_cmd: this.val('editorCmd').trim() || CONFIG.defaults.editorCmd,
       editor_args: this.val('editorArgs').trim() || CONFIG.defaults.editorArgs,
+      preview_context_lines: String(this._previewContextLines()),
     };
     baseIniRaw = d;
     if (sync && S.saveIniSync) S.saveIniSync(d);
@@ -1116,11 +1125,16 @@ class Tab {
   }
 
   // ---------- selection (single + multi, U3) ----------
-  // A row is selected when it's in the multi-selection set, or (when there is
+  // A file row is selected when it's in the multi-selection set, or (when there is
   // no multi-selection) when it is the single primary row.
   _isRowSelected(p, i) {
     if (this.selPaths.size) return this.selPaths.has(p);
     return i === this.selIdx;
+  }
+
+  // A folder row is selected when it matches selFolderKey (tree view only).
+  _isFolderRowSelected(folderKey) {
+    return this.selFolderKey === folderKey;
   }
 
   // The on-screen row order as paths: array order for the (sorted) list, DOM
@@ -1136,9 +1150,18 @@ class Tab {
   // Repaint just the `selected` class across the current view (no data rebuild).
   _repaintSelection() {
     if (this.viewMode === 'tree') {
-      this.els.fileslist.querySelectorAll('.file-row').forEach((r) => {
+      const fl = this.els.fileslist;
+      fl.querySelectorAll('.file-row').forEach((r) => {
         const i = Number(r.dataset.idx);
         r.classList.toggle('selected', this._isRowSelected(this.files[i], i));
+      });
+      fl.querySelectorAll('.tree-folderrow').forEach((r) => {
+        const isSelected = this._isFolderRowSelected(r.dataset.folderkey);
+        r.classList.toggle('selected', isSelected);
+        // Scroll selected folder into view
+        if (isSelected) {
+          r.scrollIntoView({ block: 'nearest' });
+        }
       });
     } else {
       this._vFirst = -1; this._vLast = -1;
@@ -1171,6 +1194,7 @@ class Tab {
     if (idx < 0 || idx >= this.files.length) return;
     this.selPaths = new Set();
     this.selAnchorPath = this.files[idx];
+    this.selFolderKey = null;  // Clear folder selection when selecting a file.
     if (this.viewMode === 'tree') {
       // Make sure the row is visible (expand collapsed parents) before marking.
       this.selPath = this.files[idx];
@@ -1179,6 +1203,16 @@ class Tab {
     }
     this._markSelected(idx);
     this._showPreviewFor(this.files[idx]);
+  }
+
+  // Select a folder row (keyboard navigation only; folders are not "file" selections).
+  _selectFolder(folderRow) {
+    if (!folderRow || !folderRow.classList.contains('tree-folderrow')) return;
+    this.selPaths = new Set();  // Clear multi-selection.
+    this.selIdx = -1;           // No file selected.
+    this.selPath = null;
+    this.selFolderKey = folderRow.dataset.folderkey;
+    this._repaintSelection();   // This will handle scrollIntoView + visual update
   }
 
   // Ctrl/Cmd+click: toggle one row in/out of the multi-selection.
@@ -1190,6 +1224,7 @@ class Tab {
     this.selAnchorPath = p;
     // If the user toggled everything off, drop the single-selection fallback so
     // no row stays highlighted.
+    this.selFolderKey = null;  // Clear folder selection.
     if (this.selPaths.size) { this.selIdx = idx; this.selPath = p; } else { this.selIdx = -1; this.selPath = null; }
     this._repaintSelection();
     this._showPreviewFor(p);
@@ -1210,6 +1245,7 @@ class Tab {
     this.selPaths = new Set();
     for (let k = lo; k <= hi; k += 1) if (order[k]) this.selPaths.add(order[k]);
     this.selAnchorPath = anchorPath;
+    this.selFolderKey = null;  // Clear folder selection.
     this.selIdx = idx; this.selPath = targetPath;
     if (this.viewMode === 'tree') this._expandAncestors(idx);
     this._markSelected(idx); // scrolls into view + repaints
@@ -1302,40 +1338,213 @@ class Tab {
     else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.selectAllFiles(); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); this._navFiles(1, e.shiftKey); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); this._navFiles(-1, e.shiftKey); }
+    else if (e.key === 'ArrowLeft' && this.viewMode === 'tree') {
+      e.preventDefault();
+      this._treeCollapseAndStay();
+    }
+    else if (e.key === 'ArrowRight' && this.viewMode === 'tree') {
+      e.preventDefault();
+      this._treeExpandSelectedFolder();
+    }
   }
 
   // Select every file (Ctrl+A) into the multi-selection.
   selectAllFiles() {
     if (!this.files.length) return;
     this.selPaths = new Set(this.files);
+    this.selFolderKey = null;  // Clear folder selection.
     this._repaintSelection();
   }
 
-  // Move the selection to the next/previous file row. Tree view walks the
-  // rendered rows (grouped/sorted, some hidden in collapsed folders) so Up/Down
-  // follow on-screen order. List view is virtualized — most rows aren't in the
-  // DOM — so it steps by array index instead. With Shift held, extend the
-  // multi-selection range from the anchor instead of single-selecting.
+  // Move the selection to the next/previous row in tree view. Only selects files
+  // and collapsed folders (to allow opening them). Skips expanded folders. List
+  // view steps by file index. With Shift, extend multi-selection instead.
   _navFiles(dir, extend) {
     const fl = this.els.fileslist;
     if (!fl) return;
-    let nextIdx = -1;
     if (this.viewMode === 'tree') {
-      const rows = [...fl.querySelectorAll('.file-row')].filter((r) => r.offsetParent !== null);
-      if (!rows.length) return;
-      let pos = rows.findIndex((r) => Number(r.dataset.idx) === this.selIdx);
-      if (pos < 0) pos = dir > 0 ? -1 : 0; // nothing selected yet -> first visible row
-      const next = Math.max(0, Math.min(rows.length - 1, pos + dir));
-      nextIdx = Number(rows[next].dataset.idx);
+      // In tree view, navigate files and COLLAPSED folders only.
+      const allRows = [...fl.querySelectorAll('.file-row, .tree-folderrow')]
+        .filter((r) => r.offsetParent !== null);
+      if (!allRows.length) return;
+
+      // Filter to only selectable rows: files + collapsed folders.
+      const selectableRows = allRows.filter((r) => {
+        if (r.classList.contains('file-row')) return true;
+        // Include folder only if it's collapsed.
+        const folderKey = r.dataset.folderkey;
+        return this.treeCollapsed.has(folderKey);
+      });
+      if (!selectableRows.length) return;
+
+      let pos = -1;
+      // Find current position: match by file index or folder key.
+      if (this.selFolderKey !== null) {
+        // Check if the selected folder is collapsed (normal case).
+        if (this.treeCollapsed.has(this.selFolderKey)) {
+          pos = selectableRows.findIndex((r) => r.classList.contains('tree-folderrow')
+            && r.dataset.folderkey === this.selFolderKey);
+        } else {
+          // Folder is EXPANDED: it's not in selectableRows.
+          // Find its position in allRows and navigate relative to it.
+          const folderRowEl = fl.querySelector(`.tree-folderrow[data-folderkey="${this.selFolderKey}"]`);
+          if (folderRowEl) {
+            const folderPosInAll = allRows.indexOf(folderRowEl);
+            if (dir > 0) {
+              // DOWN: first selectable row after the expanded folder.
+              const target = selectableRows.find((r) => allRows.indexOf(r) > folderPosInAll);
+              if (target) {
+                if (target.classList.contains('tree-folderrow')) {
+                  this._selectFolder(target);
+                } else {
+                  const idx = Number(target.dataset.idx);
+                  if (!Number.isNaN(idx)) {
+                    if (extend) this._selectRangeTo(idx); else this.selectFile(idx);
+                  }
+                }
+              }
+            } else {
+              // UP: last selectable row before the expanded folder.
+              const target = [...selectableRows].reverse().find((r) => allRows.indexOf(r) < folderPosInAll);
+              if (target) {
+                if (target.classList.contains('tree-folderrow')) {
+                  this._selectFolder(target);
+                } else {
+                  const idx = Number(target.dataset.idx);
+                  if (!Number.isNaN(idx)) {
+                    if (extend) this._selectRangeTo(idx); else this.selectFile(idx);
+                  }
+                }
+              }
+            }
+          }
+          return;
+        }
+      } else if (this.selIdx >= 0) {
+        pos = selectableRows.findIndex((r) => r.classList.contains('file-row')
+          && Number(r.dataset.idx) === this.selIdx);
+      }
+      if (pos < 0) pos = dir > 0 ? -1 : 0;
+      const next = Math.max(0, Math.min(selectableRows.length - 1, pos + dir));
+      const nextRow = selectableRows[next];
+
+      // Determine if next row is a file or (collapsed) folder and select accordingly.
+      if (nextRow.classList.contains('tree-folderrow')) {
+        this._selectFolder(nextRow);
+      } else {
+        const nextIdx = Number(nextRow.dataset.idx);
+        if (!Number.isNaN(nextIdx)) {
+          if (extend) this._selectRangeTo(nextIdx);
+          else this.selectFile(nextIdx);
+        }
+      }
     } else {
+      // List view: navigate by file index.
       if (!this.files.length) return;
       let pos = this.selIdx;
       if (pos < 0) pos = dir > 0 ? -1 : 0;
-      nextIdx = Math.max(0, Math.min(this.files.length - 1, pos + dir));
+      const nextIdx = Math.max(0, Math.min(this.files.length - 1, pos + dir));
+      if (nextIdx < 0) return;
+      if (extend) this._selectRangeTo(nextIdx);
+      else this.selectFile(nextIdx);
     }
-    if (nextIdx < 0) return;
-    if (extend) this._selectRangeTo(nextIdx);
-    else this.selectFile(nextIdx);
+  }
+
+  // Tree-only: on Right Arrow, expand the currently selected folder (if any).
+  // Expands in place without changing selection state.
+  _treeExpandSelectedFolder() {
+    if (this.viewMode !== 'tree' || this.selFolderKey === null) return;
+    const fl = this.els.fileslist;
+    if (!fl) return;
+    const folderRow = fl.querySelector(`.tree-folderrow[data-folderkey="${this.selFolderKey}"]`);
+    if (!folderRow) return;
+    const isCollapsed = this.treeCollapsed.has(this.selFolderKey);
+    if (isCollapsed) {
+      this._setFolderRowCollapsed(folderRow, false);
+      // After expanding, keep selection on the folder row (visual highlight stays).
+      // Next up/down navigation will naturally move to first/last child.
+    } else {
+      // Already expanded: recursively expand all nested subfolders inside it.
+      const childrenContainer = folderRow.nextElementSibling;
+      if (childrenContainer && childrenContainer.classList.contains('tree-children')) {
+        childrenContainer.querySelectorAll('.tree-folderrow').forEach((nested) => {
+          if (this.treeCollapsed.has(nested.dataset.folderkey)) {
+            this._setFolderRowCollapsed(nested, false);
+          }
+        });
+      }
+    }
+  }
+
+  // Tree-only: on Left Arrow, collapse the current folder (or parent of selected
+  // file) and stay on that folder. Cascade-collapses upward if ancestors have
+  // no visible file results.
+  _treeCollapseAndStay() {
+    if (this.viewMode !== 'tree') return;
+    const fl = this.els.fileslist;
+    if (!fl) return;
+
+    let folderRow = null;
+
+    if (this.selFolderKey !== null) {
+      // A folder is already selected — collapse it (if expanded), or collapse its parent.
+      folderRow = fl.querySelector(`.tree-folderrow[data-folderkey="${this.selFolderKey}"]`);
+      if (folderRow && !this.treeCollapsed.has(this.selFolderKey)) {
+        // Folder is expanded: collapse it and stay.
+        this._setFolderRowCollapsed(folderRow, true);
+        this._selectFolder(folderRow);
+        return;
+      }
+      // Already collapsed: try to go up to parent folder.
+      if (folderRow) {
+        const parentKids = folderRow.closest('.tree-children');
+        const parentFolderRow = parentKids && parentKids.previousElementSibling
+          && parentKids.previousElementSibling.classList.contains('tree-folderrow')
+          ? parentKids.previousElementSibling
+          : null;
+        if (parentFolderRow) {
+          this._setFolderRowCollapsed(parentFolderRow, true);
+          this._selectFolder(parentFolderRow);
+        }
+      }
+      return;
+    }
+
+    // A file is selected — find its parent folder and collapse it.
+    if (this.selIdx < 0) return;
+    const row = fl.querySelector(`.file-row[data-idx="${this.selIdx}"]`);
+    if (!row) return;
+
+    const kids = row.closest('.tree-children');
+    folderRow = kids && kids.previousElementSibling
+      && kids.previousElementSibling.classList.contains('tree-folderrow')
+      ? kids.previousElementSibling
+      : null;
+    if (!folderRow) return;
+
+    this._setFolderRowCollapsed(folderRow, true);
+
+    // Cascade collapse upward: if an ancestor now has no visible file results,
+    // collapse it too, and continue until a level still has visible files.
+    // Track the topmost collapsed folder to land selection there.
+    let topmostFolder = folderRow;
+    let parentKids = folderRow.closest('.tree-children');
+    while (parentKids) {
+      const parentFolderRow = parentKids.previousElementSibling
+        && parentKids.previousElementSibling.classList.contains('tree-folderrow')
+        ? parentKids.previousElementSibling
+        : null;
+      if (!parentFolderRow) break;
+      const parentVisibleFiles = [...parentKids.querySelectorAll('.file-row')]
+        .some((r) => r.offsetParent !== null);
+      if (parentVisibleFiles) break;
+      this._setFolderRowCollapsed(parentFolderRow, true);
+      topmostFolder = parentFolderRow;
+      parentKids = parentFolderRow.closest('.tree-children');
+    }
+
+    // Stay on the (topmost) collapsed folder instead of jumping to a file.
+    this._selectFolder(topmostFolder);
   }
 
   async copyAllFiles() {
@@ -1414,6 +1623,7 @@ class Tab {
     const p = this.files[idx];
     // Keep an existing multi-selection if right-clicking inside it; otherwise
     // single-select the row under the cursor.
+    this.selFolderKey = null;  // Clear folder selection.
     if (!this.selPaths.has(p)) {
       this.selPaths = new Set();
       this._markSelected(idx);
@@ -1425,6 +1635,12 @@ class Tab {
   }
 
   // ---------- preview ----------
+  // Return the current preview context lines value (from the input, fallback to config default).
+  _previewContextLines() {
+    const n = parseInt(this.val('previewContextLines'), 10);
+    return (!Number.isNaN(n) && n > 0) ? n : CONFIG.PreviewConfig.CONTEXT_LINES;
+  }
+
   _buildPreview() {
     if (this.previewTimer) clearTimeout(this.previewTimer);
     this.previewToken += 1;
@@ -1432,9 +1648,10 @@ class Tab {
     const filePath = this.currentFile;
     const keywords = parseKeywords(this.val('keywords'));
     const caseSensitive = this.checked('caseSensitive');
+    const contextLines = this._previewContextLines();
     this.els.preview.textContent = `(Loading preview...)\n${filePath}\n`;
 
-    const cacheKey = `${filePath}|${keywords.join('\u0001')}|${caseSensitive}`;
+    const cacheKey = `${filePath}|${keywords.join('\u0001')}|${caseSensitive}|${contextLines}`;
     if (this.previewCache.has(cacheKey)) {
       this.previewText = this.previewCache.get(cacheKey);
       this.els.preview.textContent = this.previewText;
@@ -1444,7 +1661,7 @@ class Tab {
 
     this.previewTimer = setTimeout(async () => {
       if (token !== this.previewToken) return;
-      const r = await S.buildPreview({ filePath, keywords, caseSensitive });
+      const r = await S.buildPreview({ filePath, keywords, caseSensitive, contextLines });
       if (token !== this.previewToken || this.currentFile !== filePath) return;
       this.previewText = r.text || '';
       this.previewCache.set(cacheKey, this.previewText);
@@ -1591,6 +1808,41 @@ class Tab {
     if (this.selIdx < 0) this.selectFile(0);
   }
 
+  // Focus preview and select the first highlighted match run if available.
+  // Falls back to selecting from the beginning of preview text.
+  focusPreviewFirstMatch() {
+    const pv = this.els.preview;
+    if (!pv) return;
+    pv.focus();
+
+    let firstSpan = null;
+    if (this.f3Ids && this.f3Ids.length) {
+      this.els.preview.querySelectorAll('.f3hit').forEach((sp) => sp.classList.remove('f3hit'));
+      this.f3Index = 0;
+      const spans = this.f3RunsMap.get(this.f3Ids[0]) || [];
+      spans.forEach((sp) => sp.classList.add('f3hit'));
+      if (spans[0]) {
+        firstSpan = spans[0];
+        spans[0].scrollIntoView({ block: 'center' });
+      }
+    }
+
+    const sel = window.getSelection ? window.getSelection() : null;
+    if (!sel || !document.createRange) return;
+    sel.removeAllRanges();
+    const range = document.createRange();
+
+    if (firstSpan) {
+      range.selectNodeContents(firstSpan);
+      sel.addRange(range);
+      return;
+    }
+
+    range.setStart(pv, 0);
+    range.collapse(true);
+    sel.addRange(range);
+  }
+
   destroy() { this.contentEl.remove(); }
 }
 
@@ -1641,8 +1893,25 @@ window.addEventListener('blur', hideFilesCtxMenu);
 window.addEventListener('keydown', (e) => {
   const tab = manager.currentTab();
   if (!tab) return;
+  const wantsFocusFiles = (e.ctrlKey || e.metaKey) && !e.altKey && e.key === 'ArrowLeft';
+  if (wantsFocusFiles) {
+    if (tab.files && tab.files.length) {
+      e.preventDefault();
+      tab.focusFiles();
+    }
+    return;
+  }
+  const target = e.target;
+  const isTypingTarget = !!(target && (
+    target.tagName === 'INPUT'
+    || target.tagName === 'TEXTAREA'
+    || target.isContentEditable
+  ));
+  if (isTypingTarget) return;
   if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); tab.focusKeywords(); }
   else if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); tab.focusFilter(); }
+  else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === 'ArrowRight') { e.preventDefault(); tab.focusPreviewFirstMatch(); }
+  else if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); tab._selectFolder(); }
   else if (e.key === 'Escape') { if (tab.running) { e.preventDefault(); tab.stop(); } }
   else if (e.ctrlKey && (e.key === 't' || e.key === 'T')) { e.preventDefault(); manager.add(false); }
   else if (e.ctrlKey && (e.key === 'w' || e.key === 'W')) { e.preventDefault(); manager.closeCurrent(); }
