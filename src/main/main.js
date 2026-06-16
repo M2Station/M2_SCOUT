@@ -21,6 +21,27 @@ const { parentToolDir, appDir } = require('./paths');
 const { ensureFontsInstalled } = require('./fonts');
 const { version: APP_VERSION } = require('../../package.json');
 
+const mainBootStartMs = Date.now();
+const startupLogBuffer = [];
+const STARTUP_LOG_MAX = 200;
+
+function pushStartupLog(line) {
+  startupLogBuffer.push(line);
+  if (startupLogBuffer.length > STARTUP_LOG_MAX) startupLogBuffer.shift();
+}
+
+function startupMark(stage) {
+  const ms = Date.now() - mainBootStartMs;
+  const line = `[startup][main] +${ms}ms ${stage}`;
+  pushStartupLog(line);
+  console.log(line);
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+      win.webContents.send('app:startupLog', { line });
+    }
+  }
+}
+
 // Electron keeps a GPU shader disk cache under the user-data folder. On some
 // Windows setups that folder can't be created or moved (antivirus lock, a
 // stale lock from a previous run, or a roaming-profile permission quirk),
@@ -57,6 +78,7 @@ function findIcon() {
 }
 
 function createMainWindow() {
+  startupMark('createMainWindow:start');
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 880,
@@ -71,10 +93,12 @@ function createMainWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      spellcheck: false,
     },
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  mainWindow.webContents.once('did-finish-load', () => startupMark('renderer:did-finish-load'));
 
   // Keep the versioned window title ("M2_SCOUT v0.0.1"). Without this, the
   // page's own <title> element would override the BrowserWindow title once
@@ -130,19 +154,7 @@ function openCscopeWindow(ctx) {
 }
 
 app.whenReady().then(() => {
-  // Make bundled fonts available to the OS so the CSS font stacks resolve
-  // (e.g. "Source Code Pro"). Done before the window is created so the fresh
-  // renderer process can enumerate the newly installed font this session.
-  try {
-    const fontResults = ensureFontsInstalled();
-    const installed = fontResults.filter((r) => r.action === 'installed');
-    const failed = fontResults.filter((r) => r.action === 'failed');
-    if (installed.length) console.log('[fonts] installed:', installed.map((r) => r.file).join(', '));
-    if (failed.length) console.warn('[fonts] failed:', failed.map((r) => `${r.file} (${r.error})`).join(', '));
-  } catch (e) {
-    console.warn('[fonts] ensure failed:', e.message);
-  }
-
+  startupMark('app.whenReady');
   // Optional CLI arg: a folder to pre-fill in the first tab (e.g. from the
   // Explorer right-click menu). Resolve it before wiring IPC so the renderer
   // can pull it via 'app:getCliFolder' once it has finished booting. Pushing it
@@ -155,8 +167,31 @@ app.whenReady().then(() => {
     }
   }) || null;
 
-  registerIpc({ openCscopeWindow, getInitialFolder: () => initialFolder });
+  registerIpc({
+    openCscopeWindow,
+    getInitialFolder: () => initialFolder,
+    getStartupLogs: () => startupLogBuffer.slice(),
+  });
+  startupMark('registerIpc:done');
   createMainWindow();
+  startupMark('createMainWindow:done');
+
+  // Do non-critical startup work after the first window exists so app launch is
+  // responsive even when antivirus/registry access is slow.
+  setImmediate(() => {
+    try {
+      startupMark('fonts:ensure:start');
+      const fontResults = ensureFontsInstalled();
+      const installed = fontResults.filter((r) => r.action === 'installed');
+      const failed = fontResults.filter((r) => r.action === 'failed');
+      if (installed.length) console.log('[fonts] installed:', installed.map((r) => r.file).join(', '));
+      if (failed.length) console.warn('[fonts] failed:', failed.map((r) => `${r.file} (${r.error})`).join(', '));
+      startupMark('fonts:ensure:done');
+    } catch (e) {
+      console.warn('[fonts] ensure failed:', e.message);
+      startupMark('fonts:ensure:failed');
+    }
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
