@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-label="M2_SCOUT preview find animated demo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#152238"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 30px Segoe UI, Arial, sans-serif; fill: #eaf2ff; }
+      .sub { font: 500 18px Segoe UI, Arial, sans-serif; fill: #b8c6e3; }
+      .label { font: 600 15px Consolas, Menlo, monospace; fill: #dfe8ff; }
+      .mono { font: 500 14px Consolas, Menlo, monospace; fill: #d7e1f7; }
+      .hint { font: 500 13px Segoe UI, Arial, sans-serif; fill: #93a8cf; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <text x="36" y="52" class="title">M2_SCOUT Animated Demo</text>
+  <text x="36" y="82" class="sub">Preview Ctrl+F, floating find box, and live highlight navigation</text>
+
+  <rect x="32" y="110" rx="10" ry="10" width="1136" height="550" fill="#0f172a" stroke="#2d3d63"/>
+
+  <rect x="52" y="140" rx="6" ry="6" width="460" height="36" fill="#111c33" stroke="#30466f"/>
+  <text x="66" y="163" class="label">FILES</text>
+
+  <rect x="536" y="140" rx="6" ry="6" width="612" height="36" fill="#111c33" stroke="#30466f"/>
+  <text x="552" y="163" class="label">PREVIEW</text>
+
+  <rect x="52" y="188" width="460" height="454" rx="8" ry="8" fill="#0e162a" stroke="#263a5d"/>
+  <rect x="536" y="188" width="612" height="454" rx="8" ry="8" fill="#0c1426" stroke="#263a5d"/>
+
+  <text x="70" y="220" class="mono">[12] src/renderer/js/renderer.js</text>
+  <text x="70" y="246" class="mono">[08] src/renderer/index.html</text>
+  <text x="70" y="272" class="mono">[06] src/renderer/css/style.css</text>
+  <text x="70" y="298" class="mono">[03] src/main/search.js</text>
+
+  <text x="556" y="224" class="mono">0121: function openPreviewFind() {</text>
+  <text x="556" y="250" class="mono">0122:   pop.hidden = false;</text>
+  <text x="556" y="276" class="mono">0123:   input.focus();</text>
+  <text x="556" y="302" class="mono">0124:   input.select();</text>
+  <text x="556" y="328" class="mono">0125: }</text>
+  <text x="556" y="362" class="mono">0138: if (e.ctrlKey &amp;&amp; e.key === 'f') {</text>
+  <text x="556" y="388" class="mono">0139:   e.preventDefault();</text>
+  <text x="556" y="414" class="mono">0140:   this.openPreviewFind();</text>
+  <text x="556" y="440" class="mono">0141: }</text>
+
+  <rect x="900" y="146" width="82" height="24" rx="5" ry="5" fill="#2d7bf1"/>
+  <text x="924" y="163" class="mono" fill="#ffffff">Find</text>
+
+  <g id="kbd">
+    <rect x="560" y="500" rx="7" ry="7" width="140" height="42" fill="#223a61" stroke="#5a87d0"/>
+    <text x="575" y="526" class="label" fill="#ffffff">Ctrl + F</text>
+    <animate attributeName="opacity" values="0;1;1;0;0" dur="8s" repeatCount="indefinite"/>
+  </g>
+
+  <g id="popup" opacity="0">
+    <rect x="730" y="198" rx="7" ry="7" width="390" height="44" fill="#15243f" stroke="#4f73b3"/>
+    <rect x="744" y="208" rx="4" ry="4" width="180" height="24" fill="#0f1b32" stroke="#425c90"/>
+    <text x="751" y="225" class="mono">preview</text>
+    <rect x="934" y="208" rx="4" ry="4" width="28" height="24" fill="#264575"/>
+    <text x="944" y="225" class="mono">↑</text>
+    <rect x="968" y="208" rx="4" ry="4" width="28" height="24" fill="#264575"/>
+    <text x="978" y="225" class="mono">↓</text>
+    <text x="1008" y="225" class="mono">2/4</text>
+    <rect x="1060" y="208" rx="4" ry="4" width="28" height="24" fill="#5a2b48"/>
+    <text x="1071" y="225" class="mono">X</text>
+    <animate attributeName="opacity" values="0;0;1;1;1;0;0" keyTimes="0;0.18;0.25;0.70;0.80;0.88;1" dur="8s" repeatCount="indefinite"/>
+  </g>
+
+  <g id="hl1">
+    <rect x="548" y="208" width="96" height="22" fill="#2f6fe0" opacity="0"/>
+    <animate attributeName="opacity" values="0;0;0;1;0.3;1;0" keyTimes="0;0.24;0.30;0.38;0.52;0.66;1" dur="8s" repeatCount="indefinite"/>
+  </g>
+  <g id="hl2">
+    <rect x="548" y="346" width="96" height="22" fill="#2f6fe0" opacity="0"/>
+    <animate attributeName="opacity" values="0;0;0;0.3;1;0.3;1;0" keyTimes="0;0.24;0.38;0.45;0.56;0.66;0.76;1" dur="8s" repeatCount="indefinite"/>
+  </g>
+
+  <text x="560" y="600" class="hint">Step 1: focus Preview and press Ctrl+F</text>
+  <text x="560" y="622" class="hint">Step 2: type keyword, all matches are highlighted</text>
+  <text x="560" y="644" class="hint">Step 3: Enter / Shift+Enter or buttons to navigate</text>
+</svg>

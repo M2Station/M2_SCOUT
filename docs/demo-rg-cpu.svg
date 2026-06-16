@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-label="rg parallel workers CPU stress animation">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#101319"/>
+      <stop offset="100%" stop-color="#1f2a3d"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 34px Segoe UI, Arial, sans-serif; fill: #edf3ff; }
+      .sub { font: 500 18px Segoe UI, Arial, sans-serif; fill: #bdcdea; }
+      .mono { font: 500 14px Consolas, Menlo, monospace; fill: #d6e3ff; }
+      .lab { font: 600 15px Segoe UI, Arial, sans-serif; fill: #cbd9f6; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="680" fill="url(#bg)"/>
+  <text x="30" y="54" class="title">`rg.exe` Parallel Search Saturation</text>
+  <text x="30" y="84" class="sub">AND mode -> multiple workers -> high CPU utilization</text>
+
+  <rect x="30" y="112" rx="12" ry="12" width="1140" height="540" fill="#101a2e" stroke="#324c7d"/>
+
+  <text x="56" y="148" class="lab">Launched workers</text>
+  <rect x="52" y="162" rx="8" ry="8" width="520" height="462" fill="#0c1528" stroke="#2a426c"/>
+
+  <text x="66" y="192" class="mono">rg.exe worker #1  keyword: "preview"</text>
+  <text x="66" y="214" class="mono">rg.exe worker #2  keyword: "find"</text>
+  <text x="66" y="236" class="mono">rg.exe worker #3  keyword: "highlight"</text>
+  <text x="66" y="258" class="mono">rg.exe worker #4  keyword: "renderer"</text>
+  <text x="66" y="280" class="mono">rg.exe worker #5  keyword: "context"</text>
+
+  <rect x="66" y="306" width="480" height="14" rx="4" fill="#1f365d"/>
+  <rect x="66" y="330" width="480" height="14" rx="4" fill="#1f365d"/>
+  <rect x="66" y="354" width="480" height="14" rx="4" fill="#1f365d"/>
+  <rect x="66" y="378" width="480" height="14" rx="4" fill="#1f365d"/>
+  <rect x="66" y="402" width="480" height="14" rx="4" fill="#1f365d"/>
+
+  <rect x="66" y="306" width="16" height="14" rx="4" fill="#56b6ff">
+    <animate attributeName="width" values="20;420;470;330;480;50" dur="2.4s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="66" y="330" width="16" height="14" rx="4" fill="#78c6ff">
+    <animate attributeName="width" values="30;450;480;360;460;40" dur="2.1s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="66" y="354" width="16" height="14" rx="4" fill="#9ad4ff">
+    <animate attributeName="width" values="25;430;470;390;480;32" dur="2.6s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="66" y="378" width="16" height="14" rx="4" fill="#4ca2ff">
+    <animate attributeName="width" values="18;440;480;350;470;28" dur="2.3s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="66" y="402" width="16" height="14" rx="4" fill="#7bbdff">
+    <animate attributeName="width" values="22;410;465;320;480;25" dur="2.8s" repeatCount="indefinite"/>
+  </rect>
+
+  <text x="618" y="148" class="lab">CPU load</text>
+  <rect x="614" y="162" rx="8" ry="8" width="532" height="462" fill="#0c1528" stroke="#2a426c"/>
+
+  <rect x="652" y="194" width="460" height="340" fill="#111f38" stroke="#355483"/>
+  <line x1="652" y1="474" x2="1112" y2="474" stroke="#607ea8"/>
+  <line x1="652" y1="390" x2="1112" y2="390" stroke="#364f79"/>
+  <line x1="652" y1="306" x2="1112" y2="306" stroke="#364f79"/>
+  <line x1="652" y1="222" x2="1112" y2="222" stroke="#364f79"/>
+
+  <text x="618" y="224" class="mono">100%</text>
+  <text x="624" y="308" class="mono">75%</text>
+  <text x="624" y="392" class="mono">50%</text>
+  <text x="624" y="476" class="mono">25%</text>
+
+  <polyline fill="none" stroke="#71b7ff" stroke-width="4"
+    points="660,470 700,430 740,300 780,250 820,210 860,230 900,206 940,214 980,198 1020,208 1060,202 1100,206">
+    <animate attributeName="points"
+      values="660,470 700,430 740,300 780,250 820,210 860,230 900,206 940,214 980,198 1020,208 1060,202 1100,206;
+              660,470 700,420 740,280 780,230 820,202 860,212 900,200 940,206 980,196 1020,202 1060,198 1100,201;
+              660,470 700,435 740,310 780,244 820,208 860,218 900,205 940,212 980,199 1020,207 1060,203 1100,206"
+      dur="3s" repeatCount="indefinite"/>
+  </polyline>
+
+  <text x="660" y="568" class="mono">Status: AND search running with parallel rg.exe workers</text>
+  <text x="660" y="592" class="mono">Effect: high throughput and high CPU utilization on multi-core machines</text>
+
+  <text x="54" y="646" class="sub">M2_SCOUT can intentionally maximize search throughput by parallelizing rg.exe workers</text>
+</svg>
