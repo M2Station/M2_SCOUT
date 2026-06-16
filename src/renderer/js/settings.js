@@ -34,9 +34,11 @@
   let langLabelEl = null;
   let themeLabelEl = null;
   let platLabelEl = null;
+  let ctxLinesLabelEl = null;
   let langSel = null;
   let themeSel = null;
   let platSel = null;
+  let ctxLinesInput = null;
   let closeBtn = null;
 
   function buildPopup() {
@@ -112,6 +114,30 @@
     platRow.appendChild(platSel);
     panel.appendChild(platRow);
 
+    // Preview context lines row
+    const ctxRow = document.createElement('label');
+    ctxRow.className = 'settings-row';
+    ctxLinesLabelEl = document.createElement('span');
+    ctxLinesLabelEl.className = 'settings-label';
+    ctxLinesInput = document.createElement('input');
+    ctxLinesInput.type = 'number';
+    ctxLinesInput.min = '1';
+    ctxLinesInput.max = '100';
+    ctxLinesInput.className = 'settings-select';
+    ctxLinesInput.style.width = '5em';
+    ctxLinesInput.addEventListener('change', () => {
+      const n = parseInt(ctxLinesInput.value, 10);
+      if (!Number.isNaN(n) && n > 0) {
+        document.querySelectorAll('[data-field="previewContextLines"]').forEach((el) => {
+          el.value = String(n);
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+      }
+    });
+    ctxRow.appendChild(ctxLinesLabelEl);
+    ctxRow.appendChild(ctxLinesInput);
+    panel.appendChild(ctxRow);
+
     // Close button
     closeBtn = document.createElement('button');
     closeBtn.className = 'btn settings-close';
@@ -133,10 +159,15 @@
     langLabelEl.textContent = t('settings.language');
     themeLabelEl.textContent = t('settings.theme');
     if (platLabelEl) platLabelEl.textContent = t('settings.platform');
+    if (ctxLinesLabelEl) ctxLinesLabelEl.textContent = t('form.previewContextLines');
     closeBtn.textContent = t('settings.close');
     if (I18N && langSel) langSel.value = I18N.getLang();
     if (THEMES && themeSel) themeSel.value = THEMES.current();
     if (platSel) platSel.value = M2Platform.get();
+    if (ctxLinesInput) {
+      const el = document.querySelector('[data-field="previewContextLines"]');
+      ctxLinesInput.value = el ? (el.value || '13') : '13';
+    }
   }
 
   function show() {

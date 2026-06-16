@@ -46,7 +46,7 @@ const ToolConfig = {
 };
 
 const PreviewConfig = {
-  CONTEXT_LINES: 10,
+  CONTEXT_LINES: 13,
   MERGE_OVERLAPPED_CONTEXT_BLOCKS: true,
   SHOW_BLOCK_SEPARATORS: true,
   DEBOUNCE_MS: 120,
