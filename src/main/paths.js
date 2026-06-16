@@ -41,6 +41,24 @@ function appDir() {
   return path.resolve(__dirname, '..', '..');
 }
 
+// Directory where user settings (INI files) are persisted.
+// - Packaged app: app.getPath('userData')  e.g. %AppData%\M2_SCOUT
+//   This is always writable and survives reinstalls / upgrades.
+// - Dev run: same as appDir() so the project-root INI files are used directly.
+function settingsDir() {
+  try {
+    if (app && app.isPackaged) {
+      const dir = app.getPath('userData');
+      // Ensure the directory exists (it may not on first run).
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      return dir;
+    }
+  } catch (_e) {
+    /* app not ready / not in electron */
+  }
+  return appDir();
+}
+
 // The parent directory of M2_SCOUT (the original M2_SEEK root that ships rg.exe/fd.exe/cscope.exe).
 function parentToolDir() {
   return path.resolve(appDir(), '..');
@@ -52,15 +70,15 @@ function toolsDir() {
 }
 
 function iniPath() {
-  return path.join(appDir(), AppConfig.INI_FILENAME);
+  return path.join(settingsDir(), AppConfig.INI_FILENAME);
 }
 
 function excludeGroupIniPath() {
-  return path.join(appDir(), AppConfig.EXCLUDE_GROUP_INI);
+  return path.join(settingsDir(), AppConfig.EXCLUDE_GROUP_INI);
 }
 
 function hlIniPath() {
-  return path.join(appDir(), AppConfig.HL_INI);
+  return path.join(settingsDir(), AppConfig.HL_INI);
 }
 
 // Directory of bundled fonts (FONTS/) shipped next to the app.
@@ -94,6 +112,7 @@ function resolveExe(exe) {
 
 module.exports = {
   appDir,
+  settingsDir,
   parentToolDir,
   toolsDir,
   iniPath,
