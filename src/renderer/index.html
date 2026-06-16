@@ -136,6 +136,14 @@
           <div class="preview-header">
             <span class="preview-file" data-el="previewFile" data-i18n="preview.title">Preview</span>
             <span class="hint" data-el="previewHint"></span>
+            <button data-action="togglePreviewFind" class="btn btn-mini preview-find-btn" data-el="previewFindBtn" title="Find in preview (Ctrl+F)">Find</button>
+          </div>
+          <div class="preview-find-pop" data-el="previewFindPop" hidden>
+            <input type="text" data-el="previewFindInput" class="preview-find-input" placeholder="Find in preview" />
+            <button data-action="previewFindPrev" class="btn btn-mini" title="Previous match (Shift+Enter)">↑</button>
+            <button data-action="previewFindNext" class="btn btn-mini" title="Next match (Enter)">↓</button>
+            <span class="preview-find-count" data-el="previewFindCount"></span>
+            <button data-action="previewFindClose" class="btn btn-mini" title="Close">✕</button>
           </div>
           <pre class="preview" data-el="preview" tabindex="0"></pre>
         </div>
