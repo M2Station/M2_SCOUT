@@ -163,7 +163,7 @@ function buildContext(raw) {
   };
 }
 
-function registerIpc({ openCscopeWindow, getInitialFolder }) {
+function registerIpc({ openCscopeWindow, getInitialFolder, getStartupLogs }) {
   startCpuSampler();
 
   // ---- config & ini ----
@@ -489,6 +489,7 @@ function registerIpc({ openCscopeWindow, getInitialFolder }) {
   // ---- app ----
   // Renderer pulls the optional command-line folder once it has booted.
   ipcMain.handle('app:getCliFolder', () => (typeof getInitialFolder === 'function' ? (getInitialFolder() || null) : null));
+  ipcMain.handle('app:getStartupLogs', () => (typeof getStartupLogs === 'function' ? getStartupLogs() : []));
 
   // ---- tool updates (ripgrep / fd) ----
   ipcMain.handle('tool:checkUpdate', async (_e, params) => {

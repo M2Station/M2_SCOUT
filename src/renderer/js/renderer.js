@@ -18,6 +18,55 @@ const S = window.m2scout;
 const HLR = window.M2ScoutHighlight;
 const T = (k, v) => (window.M2I18n ? window.M2I18n.t(k, v) : k);
 
+const pendingStartupLines = [];
+function pushStartupLine(line) {
+  if (!line) return;
+  pendingStartupLines.push(line);
+  const base = manager && manager.tabs && manager.tabs[0];
+  if (!base || typeof base.debug !== 'function') return;
+  while (pendingStartupLines.length) {
+    base.debug(pendingStartupLines.shift());
+  }
+}
+
+const rendererBootStartMs = Date.now();
+function bootMark(stage) {
+  const ms = Date.now() - rendererBootStartMs;
+  const line = `[startup][renderer] +${ms}ms ${stage}`;
+  console.log(line);
+  pushStartupLine(line);
+}
+
+function loadScript(src) {
+  return new Promise((resolve) => {
+    const el = document.createElement('script');
+    el.src = src;
+    el.onload = () => resolve(true);
+    el.onerror = () => resolve(false);
+    document.body.appendChild(el);
+  });
+}
+
+async function loadDeferredUiScripts() {
+  const base = 'js/';
+  const scripts = [
+    `${base}settings.js`,
+    `${base}excludePicker.js`,
+    `${base}folderPicker.js`,
+    `${base}editorPicker.js`,
+    `${base}history.js`,
+  ];
+  await Promise.all(scripts.map((s) => loadScript(s)));
+  bootMark('deferred-ui:loaded');
+}
+
+if (S.onStartupLog) {
+  S.onStartupLog((payload) => {
+    const line = payload && payload.line;
+    if (line) pushStartupLine(line);
+  });
+}
+
 let CONFIG = null;
 let HL_RULES = {};
 let baseIniRaw = {}; // loaded settings INI for the default tab
@@ -1613,9 +1662,21 @@ S.onFlushSettings(() => {
 // Boot
 // ============================================================
 async function boot() {
+  bootMark('boot:start');
+  try {
+    const history = await S.getStartupLogs();
+    if (Array.isArray(history)) {
+      for (const line of history) pushStartupLine(line);
+    }
+  } catch (_e) {
+    // ignore - live startup log stream still works
+  }
   CONFIG = await S.getConfig();
+  bootMark('config:loaded');
   HL_RULES = await S.loadHl();
+  bootMark('highlight:loaded');
   baseIniRaw = await S.loadIni();
+  bootMark('ini:loaded');
 
   document.getElementById('tabAdd').addEventListener('click', () => manager.add(false));
 
@@ -1631,14 +1692,19 @@ async function boot() {
 
   const base = manager.add(true);
   base.loadFromIni(baseIniRaw);
+  bootMark('base-tab:ready');
+  pushStartupLine('[startup][ui] Debug panel startup logs enabled');
 
   // Detect Beyond Compare once; the files context menu uses this to decide
   // whether to offer "Compare in Beyond Compare" (only when 2 files selected).
   manager.beyondCompare = { found: false, path: '' };
-  try {
-    const bc = await S.detectBeyondCompare();
-    if (bc && bc.ok) manager.beyondCompare = { found: !!bc.found, path: bc.path || '' };
-  } catch (_e) { /* ignore - feature simply stays hidden */ }
+  S.detectBeyondCompare()
+    .then((bc) => {
+      if (bc && bc.ok) manager.beyondCompare = { found: !!bc.found, path: bc.path || '' };
+    })
+    .catch(() => {
+      // ignore - feature simply stays hidden
+    });
 
   // Localise static + dynamic chrome, and re-localise when the language changes.
   if (window.M2I18n) window.M2I18n.apply(document);
@@ -1655,6 +1721,7 @@ async function boot() {
     const cliFolder = await S.getCliFolder();
     if (cliFolder) base.setVal('folder', cliFolder);
   } catch (_e) { /* ignore */ }
+  bootMark('cli-folder:resolved');
 
   // route search events
   S.onSearchEvent(({ sessionId, type, payload }) => {
@@ -1694,6 +1761,14 @@ async function boot() {
   }, 200);
 
   base.debug('M2_SCOUT (M2 SEEK Node.js port) - Initialized');
+  bootMark('boot:done');
+
+  // Keep initial paint fast: load optional popups/pickers after the app is ready.
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => { loadDeferredUiScripts(); });
+  } else {
+    setTimeout(() => { loadDeferredUiScripts(); }, 0);
+  }
 }
 
 boot();

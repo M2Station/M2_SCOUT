@@ -114,6 +114,7 @@ contextBridge.exposeInMainWorld('m2scout', {
 
   // app events
   getCliFolder: () => ipcRenderer.invoke('app:getCliFolder'),
+  getStartupLogs: () => ipcRenderer.invoke('app:getStartupLogs'),
   onCliFolder: (cb) => {
     const listener = (_e, payload) => cb(payload);
     ipcRenderer.on('app:cliFolder', listener);
@@ -125,6 +126,11 @@ contextBridge.exposeInMainWorld('m2scout', {
     const listener = () => cb();
     ipcRenderer.on('app:flushSettings', listener);
     return () => ipcRenderer.removeListener('app:flushSettings', listener);
+  },
+  onStartupLog: (cb) => {
+    const listener = (_e, payload) => cb(payload);
+    ipcRenderer.on('app:startupLog', listener);
+    return () => ipcRenderer.removeListener('app:startupLog', listener);
   },
 
   // path helpers
