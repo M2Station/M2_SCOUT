@@ -1,0 +1,31 @@
+name: Self-Test
+
+# Static feature guards that run on every PR to catch regressions before they
+# merge - e.g. a broken keyboard shortcut, a dead button, or a duplicate class
+# method that silently shadows another (which once broke "Select Folder").
+#
+# These checks are pure static analysis: no Electron, no DOM, no npm install,
+# so they finish in seconds.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run feature self-tests
+        run: node --test test/selftest.test.js
