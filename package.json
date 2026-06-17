@@ -1,6 +1,6 @@
 {
   "name": "m2_scout",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "description": "M2_SCOUT - Node.js/Electron port of M2 SEEK: a ripgrep / fd / cscope GUI search tool",
   "main": "src/main/main.js",
   "scripts": {
