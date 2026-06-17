@@ -1217,7 +1217,7 @@ class Tab {
   }
 
   // Select a folder row (keyboard navigation only; folders are not "file" selections).
-  _selectFolder(folderRow) {
+  _selectFolderRow(folderRow) {
     if (!folderRow || !folderRow.classList.contains('tree-folderrow')) return;
     this.selPaths = new Set();  // Clear multi-selection.
     this.selIdx = -1;           // No file selected.
@@ -1406,7 +1406,7 @@ class Tab {
               const target = selectableRows.find((r) => allRows.indexOf(r) > folderPosInAll);
               if (target) {
                 if (target.classList.contains('tree-folderrow')) {
-                  this._selectFolder(target);
+                  this._selectFolderRow(target);
                 } else {
                   const idx = Number(target.dataset.idx);
                   if (!Number.isNaN(idx)) {
@@ -1419,7 +1419,7 @@ class Tab {
               const target = [...selectableRows].reverse().find((r) => allRows.indexOf(r) < folderPosInAll);
               if (target) {
                 if (target.classList.contains('tree-folderrow')) {
-                  this._selectFolder(target);
+                  this._selectFolderRow(target);
                 } else {
                   const idx = Number(target.dataset.idx);
                   if (!Number.isNaN(idx)) {
@@ -1441,7 +1441,7 @@ class Tab {
 
       // Determine if next row is a file or (collapsed) folder and select accordingly.
       if (nextRow.classList.contains('tree-folderrow')) {
-        this._selectFolder(nextRow);
+        this._selectFolderRow(nextRow);
       } else {
         const nextIdx = Number(nextRow.dataset.idx);
         if (!Number.isNaN(nextIdx)) {
@@ -1503,7 +1503,7 @@ class Tab {
       if (folderRow && !this.treeCollapsed.has(this.selFolderKey)) {
         // Folder is expanded: collapse it and stay.
         this._setFolderRowCollapsed(folderRow, true);
-        this._selectFolder(folderRow);
+        this._selectFolderRow(folderRow);
         return;
       }
       // Already collapsed: try to go up to parent folder.
@@ -1515,7 +1515,7 @@ class Tab {
           : null;
         if (parentFolderRow) {
           this._setFolderRowCollapsed(parentFolderRow, true);
-          this._selectFolder(parentFolderRow);
+          this._selectFolderRow(parentFolderRow);
         }
       }
       return;
@@ -1555,7 +1555,7 @@ class Tab {
     }
 
     // Stay on the (topmost) collapsed folder instead of jumping to a file.
-    this._selectFolder(topmostFolder);
+    this._selectFolderRow(topmostFolder);
   }
 
   async copyAllFiles() {
@@ -2044,6 +2044,21 @@ window.addEventListener('keydown', (e) => {
     }
     return;
   }
+  // Alt+F -> Select Folder. Handled before the typing-target guard below so it
+  // works even while a form field (keyword/folder input) has focus; Alt+F has
+  // no native text-editing meaning, so intercepting it is safe.
+  if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    tab._selectFolder();
+    return;
+  }
+  // Esc -> Stop a running search. Handled before the typing-target guard so it
+  // works even while a form field (keyword/filter input) has focus. When no
+  // search is running it falls through to the field's own native Esc behaviour.
+  if (e.key === 'Escape') {
+    if (tab.running) { e.preventDefault(); tab.stop(); }
+    return;
+  }
   const target = e.target;
   const isTypingTarget = !!(target && (
     target.tagName === 'INPUT'
@@ -2054,8 +2069,6 @@ window.addEventListener('keydown', (e) => {
   if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); tab.focusKeywords(); }
   else if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); tab.focusFilter(); }
   else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === 'ArrowRight') { e.preventDefault(); tab.focusPreviewFirstMatch(); }
-  else if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); tab._selectFolder(); }
-  else if (e.key === 'Escape') { if (tab.running) { e.preventDefault(); tab.stop(); } }
   else if (e.ctrlKey && (e.key === 't' || e.key === 'T')) { e.preventDefault(); manager.add(false); }
   else if (e.ctrlKey && (e.key === 'w' || e.key === 'W')) { e.preventDefault(); manager.closeCurrent(); }
   else if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); tab.focusFiles(); }

@@ -15,7 +15,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu } = require('electron');
 const { registerIpc } = require('./ipc');
 const { parentToolDir, appDir } = require('./paths');
 const { ensureFontsInstalled } = require('./fonts');
@@ -155,6 +155,12 @@ function openCscopeWindow(ctx) {
 
 app.whenReady().then(() => {
   startupMark('app.whenReady');
+  // Drop the default Electron application menu. With autoHideMenuBar the hidden
+  // menu still captures the Alt key and Alt+<mnemonic> combos (e.g. Alt+F for
+  // "File"), which swallowed the renderer's Alt+F "Select Folder" hotkey before
+  // it could fire. Removing the menu frees all Alt-based shortcuts for the app's
+  // own keydown handlers.
+  Menu.setApplicationMenu(null);
   // Optional CLI arg: a folder to pre-fill in the first tab (e.g. from the
   // Explorer right-click menu). Resolve it before wiring IPC so the renderer
   // can pull it via 'app:getCliFolder' once it has finished booting. Pushing it
