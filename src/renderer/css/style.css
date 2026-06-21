@@ -615,7 +615,9 @@ body { display: flex; flex-direction: column; }
 .tab-credit .gh-icon {
   width: 14px;
   height: 14px;
-  fill: var(--text-soft);
+  /* M2 brand green - kept fixed (theme-independent) so the in-app mark always
+     matches the green app icon in LOGO/M2_SCOUT.ico. See scripts/build_logo.py. */
+  fill: #16A34A;
   transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), fill 0.2s ease;
 }
 .tab-credit .credit-by {
@@ -644,7 +646,7 @@ body { display: flex; flex-direction: column; }
 }
 .tab-credit:hover .gh-icon {
   transform: rotate(360deg) scale(1.12);
-  fill: var(--accent);
+  fill: #22C55E;
 }
 .tab-credit:hover .credit-name { animation: creditShimmer 1.1s linear infinite; }
 @keyframes creditShimmer {
