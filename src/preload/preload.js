@@ -115,6 +115,9 @@ contextBridge.exposeInMainWorld('m2scout', {
   // app events
   getCliFolder: () => ipcRenderer.invoke('app:getCliFolder'),
   getStartupLogs: () => ipcRenderer.invoke('app:getStartupLogs'),
+  // Cache the current theme background so the next cold start can paint the
+  // window with the correct color immediately (avoids a white flash).
+  setStartupBg: (color) => ipcRenderer.invoke('app:setStartupBg', color),
   onCliFolder: (cb) => {
     const listener = (_e, payload) => cb(payload);
     ipcRenderer.on('app:cliFolder', listener);
