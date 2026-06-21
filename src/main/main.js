@@ -61,6 +61,29 @@ let mainWindow = null;
 // a race with the window's did-finish-load event.
 let initialFolder = null;
 
+// Default theme background (DAYLIGHT `--bg` in src/renderer/js/themes.js). Used
+// as the window backgroundColor when no valid startup cache is available.
+const DEFAULT_STARTUP_BG = '#f4f4f4';
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
+
+// Read the cached theme background written by the renderer on the previous run
+// (userData/startup.json -> { "bg": "#rrggbb" }). Showing the window with the
+// right backgroundColor avoids a white flash before the renderer paints, which
+// matters most for dark-theme users. Falls back to the light default theme bg
+// when the cache is missing (first launch) or invalid. Wrapped in try/catch so
+// a missing file or bad JSON never throws during boot.
+function startupBackground() {
+  try {
+    const cacheFile = path.join(app.getPath('userData'), 'startup.json');
+    const raw = fs.readFileSync(cacheFile, 'utf8');
+    const bg = JSON.parse(raw).bg;
+    if (typeof bg === 'string' && HEX_COLOR_RE.test(bg)) return bg;
+  } catch (_e) {
+    /* no cache yet / unreadable / invalid JSON - use the default */
+  }
+  return DEFAULT_STARTUP_BG;
+}
+
 function findIcon() {
   const candidates = [
     // Primary location: LOGO/M2_SCOUT.ico next to the app.
@@ -87,7 +110,12 @@ function createMainWindow() {
     title: `M2_SCOUT v${APP_VERSION}`,
     icon: findIcon(),
     autoHideMenuBar: true,
-    backgroundColor: '#f4f4f4',
+    // Show the window immediately on creation (no `show: false` +
+    // `ready-to-show` wait) so it appears as early as possible; the renderer
+    // content fills in right after. backgroundColor is seeded from the cached
+    // theme bg so dark-theme users don't see a white flash first.
+    show: true,
+    backgroundColor: startupBackground(),
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'preload.js'),
       contextIsolation: true,

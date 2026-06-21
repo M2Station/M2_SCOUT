@@ -293,6 +293,13 @@
     for (const k of Object.keys(vars)) root.style.setProperty(k, vars[k]);
     root.setAttribute('data-theme', themeId);
     try { localStorage.setItem('appTheme', themeId); } catch (_e) { /* ignore */ }
+    // Cache the current theme background in the main process so the next cold
+    // start paints the window with the correct color immediately (no flash).
+    try {
+      if (window.m2scout && typeof window.m2scout.setStartupBg === 'function') {
+        window.m2scout.setStartupBg(vars['--bg']);
+      }
+    } catch (_e) { /* ignore */ }
     try {
       window.dispatchEvent(new CustomEvent('m2-theme-changed', { detail: { theme: themeId } }));
     } catch (_e) { /* ignore */ }

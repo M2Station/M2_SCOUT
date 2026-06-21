@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  ipcMain, dialog, shell, BrowserWindow,
+  ipcMain, dialog, shell, BrowserWindow, app,
 } = require('electron');
 const os = require('os');
 const { spawn } = require('child_process');
@@ -491,6 +491,22 @@ function registerIpc({ openCscopeWindow, getInitialFolder, getStartupLogs }) {
   // Renderer pulls the optional command-line folder once it has booted.
   ipcMain.handle('app:getCliFolder', () => (typeof getInitialFolder === 'function' ? (getInitialFolder() || null) : null));
   ipcMain.handle('app:getStartupLogs', () => (typeof getStartupLogs === 'function' ? getStartupLogs() : []));
+
+  // Renderer caches the current theme background here whenever a theme is
+  // applied. The main process reads it on the next cold start (see
+  // startupBackground() in main.js) to paint the window with the right color
+  // immediately. Only valid hex colors are accepted; everything is wrapped so a
+  // bad value or a write failure returns false instead of crashing the app.
+  ipcMain.handle('app:setStartupBg', (_e, color) => {
+    try {
+      if (typeof color !== 'string' || !/^#[0-9a-fA-F]{3,8}$/.test(color)) return false;
+      const cacheFile = path.join(app.getPath('userData'), 'startup.json');
+      fs.writeFileSync(cacheFile, JSON.stringify({ bg: color }));
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  });
 
   // ---- tool updates (ripgrep / fd) ----
   ipcMain.handle('tool:checkUpdate', async (_e, params) => {
