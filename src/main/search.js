@@ -22,12 +22,13 @@ const { SearchConfig, LiveUpdateConfig } = require('./config');
 
 const WINDOWS = process.platform === 'win32';
 
-// Run a single ripgrep keyword search, streaming match counts.
-// onMatch(path) is called for every match line. Returns a promise resolving to
-// { counts: Map, filesSearched, stderr, stopped }.
-function runSingleRg(rgExe, folder, keyword, inc, exd, exf, caseSensitive, respectIgnore, ctx, onMatch, onDebug) {
+// Run a single ripgrep invocation, streaming match counts. `keywords` may be a
+// single string or an array; passing several keywords matches their union (OR)
+// in one scan. onMatch(path) is called for every match line. Returns a promise
+// resolving to { counts: Map, filesSearched, stderr, stopped }.
+function runSingleRg(rgExe, folder, keywords, inc, exd, exf, caseSensitive, respectIgnore, ctx, onMatch, onDebug) {
   return new Promise((resolve) => {
-    const args = rgSearchArgs(folder, keyword, inc, exd, exf, caseSensitive, respectIgnore);
+    const args = rgSearchArgs(folder, keywords, inc, exd, exf, caseSensitive, respectIgnore);
     if (onDebug) onDebug(`RUN (cmdline): ${formatCmdline([rgExe, ...args])}`);
 
     const counts = new Map();
@@ -197,7 +198,21 @@ class SearchSession {
     const filesSearchedSeen = [];
     let stopped = false;
 
-    if (useParallelAnd) {
+    if (mode !== 'AND') {
+      // OR: match the union of all keywords in ONE ripgrep process, so the
+      // filesystem is traversed a single time instead of once per keyword.
+      const r = await runSingleRg(exe, folder, keywords, inc, exd, exf, caseSensitive, respectIgnore, this, onMatch, onDebug);
+      if (r.error && r.error.code === 'ENOENT') {
+        this.emit('error', { msg: `rg not found: ${exe}` });
+        return;
+      }
+      if (r.filesSearched !== null && r.filesSearched !== undefined) filesSearchedSeen.push(r.filesSearched);
+      if (r.stderr) stderrAny.push(r.stderr);
+      if (r.stopped) stopped = true;
+      perKwCounts.push(r.counts);
+      perKwFiles.push(new Set(r.counts.keys()));
+      onDebug(`[OR] done | files=${r.counts.size} matches=${sumMap(r.counts)}`);
+    } else if (useParallelAnd) {
       const results = await Promise.all(
         keywords.map((kw) =>
           runSingleRg(exe, folder, kw, inc, exd, exf, caseSensitive, respectIgnore, this, onMatch, onDebug)

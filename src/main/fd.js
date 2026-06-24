@@ -138,31 +138,33 @@ class FdSearchSession {
     const onDebug = (msg) => this.emit('debug', { msg });
     const t0 = Date.now();
 
-    const perKwSets = [];
-    const union = new Set();
     const stderrAny = [];
-    let stopped = false;
 
-    for (const kw of keywords) {
-      if (this.stopRequested) {
-        stopped = true;
-        break;
-      }
-      // eslint-disable-next-line no-await-in-loop
-      const r = await runSingleFd(exe, folder, kw, caseSensitive, respectIgnore, inc, exdList, this, onDebug);
+    // Run every keyword concurrently - fd spends most of its time walking the
+    // filesystem, so launching the scans in parallel overlaps that I/O instead
+    // of paying for it once per keyword.
+    const results = await Promise.all(
+      keywords.map((kw) =>
+        runSingleFd(exe, folder, kw, caseSensitive, respectIgnore, inc, exdList, this, onDebug)
+          .then((r) => ({ kw, r }))),
+    );
+
+    for (const { r } of results) {
       if (r.error && r.error.code === 'ENOENT') {
         this.emit('error', { msg: `fd not found: ${exe}` });
         return;
       }
+    }
+
+    const perKwSets = [];
+    const union = new Set();
+    for (const { kw, r } of results) {
       if (r.stderr) stderrAny.push(`[${kw}] ${r.stderr}`);
       for (const f of r.files) union.add(f);
       perKwSets.push(r.files);
       onDebug(`fd done kw='${kw}' | files=${r.files.size}`);
-      if (this.stopRequested) {
-        stopped = true;
-        break;
-      }
     }
+    const stopped = this.stopRequested;
 
     let final = union;
     if (mode === 'AND' && perKwSets.length) {
