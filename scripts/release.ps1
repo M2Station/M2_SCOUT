@@ -111,8 +111,8 @@ if (-not $Publish) {
   Write-Step "Verification build (electron-builder NSIS) for v$target"
   npm run dist
   if ($LASTEXITCODE -ne 0) { Fail 'Build failed' }
-  $setup = Get-ChildItem (Join-Path $repoRoot 'dist') -Filter '*Setup*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($setup) { Write-Ok "Installer built: $($setup.Name)" } else { Fail 'No Setup .exe produced' }
+  $setups = Get-ChildItem (Join-Path $repoRoot 'dist') -Filter '*Setup*.exe' -ErrorAction SilentlyContinue
+  if ($setups) { foreach ($s in $setups) { Write-Ok "Installer built: $($s.Name)" } } else { Fail 'No Setup .exe produced' }
   Write-Host ''
   Write-Host 'Verify-only run complete. Nothing was committed, tagged, or published.' -ForegroundColor Yellow
   Write-Host "To publish: pwsh scripts/release.ps1 -Version $target -Publish" -ForegroundColor Yellow
