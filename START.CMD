@@ -108,6 +108,15 @@ goto :deps_done
 :deps_ok
 echo       node_modules OK
 :deps_done
+REM Auto-repair Electron binary if it failed to install/extract correctly.
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo       Repairing Electron binary ...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\repair-electron.ps1"
+  if errorlevel 1 (
+    echo [ERROR] Electron auto-repair failed.
+    exit /b 1
+  )
+)
 echo.
 exit /b 0
 

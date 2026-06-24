@@ -315,7 +315,7 @@ class Tab {
     this.setVal('editorArgs', d.editorArgs);
     this.setVal('previewContextLines', String(CONFIG.PreviewConfig.CONTEXT_LINES));
     this.setMode('OR');
-    this.fields.caseSensitive.checked = true;
+    this.fields.caseSensitive.checked = false;
     this.fields.respectIgnore.checked = true;
     this._updateEditorReadout();
     this.updateButtons(false);

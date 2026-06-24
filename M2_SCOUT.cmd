@@ -17,6 +17,17 @@ if not exist "node_modules\electron" (
   )
 )
 
+REM Auto-repair: a partial/failed Electron install leaves the package folder
+REM in place but without the binary. Re-extract it before launching.
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo [M2_SCOUT] Repairing Electron binary ...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\repair-electron.ps1"
+  if errorlevel 1 (
+    echo [M2_SCOUT] Electron auto-repair failed. Run START.CMD for details.
+    exit /b 1
+  )
+)
+
 REM Launch with NO console window via the VBScript wrapper (start "" cmd /c
 REM npm start leaves a command prompt open for the app's lifetime).
 start "" wscript.exe //nologo "%~dp0run-hidden.vbs" %*
