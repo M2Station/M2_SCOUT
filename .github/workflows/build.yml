@@ -55,13 +55,16 @@ jobs:
           if ($fail) { exit 1 }
           Write-Host "All JS syntax OK ($($files.Count) files)"
 
-      - name: Build EXE (electron-builder --dir)
+      - name: Build EXE (electron-builder --dir, x64 + arm64)
         run: npm run pack
 
       - name: Verify packaged layout
         shell: pwsh
         run: |
-          $root = "dist/win-unpacked"
+          $targets = @{
+            'x64'   = 'dist/win-unpacked'
+            'arm64' = 'dist/win-arm64-unpacked'
+          }
           $required = @(
             "M2_SCOUT.exe",
             "TOOLS/rg.exe", "TOOLS/fd.exe", "TOOLS/cscope.exe",
@@ -71,18 +74,25 @@ jobs:
             "resources/app.asar"
           )
           $fail = $false
-          foreach ($r in $required) {
-            if (-not (Test-Path (Join-Path $root $r))) { Write-Host "MISSING: $r"; $fail = $true }
-          }
-          if (Test-Path (Join-Path $root "TOOLS/ZIP")) {
-            Write-Host "UNEXPECTED: TOOLS/ZIP was bundled (it should be excluded)"; $fail = $true
+          foreach ($arch in $targets.Keys) {
+            $root = $targets[$arch]
+            if (-not (Test-Path $root)) { Write-Host "MISSING build dir for ${arch}: $root"; $fail = $true; continue }
+            foreach ($r in $required) {
+              if (-not (Test-Path (Join-Path $root $r))) { Write-Host "[$arch] MISSING: $r"; $fail = $true }
+            }
+            if (Test-Path (Join-Path $root "TOOLS/ZIP")) {
+              Write-Host "[$arch] UNEXPECTED: TOOLS/ZIP was bundled (it should be excluded)"; $fail = $true
+            }
+            Write-Host "[$arch] checked $root"
           }
           if ($fail) { exit 1 }
-          Write-Host "Layout OK: M2_SCOUT.exe + TOOLS + FONTS + LOGO + INI templates present"
+          Write-Host "Layout OK for x64 + arm64: M2_SCOUT.exe + native TOOLS + FONTS + LOGO + INI templates present"
 
-      - name: Upload unpacked build
+      - name: Upload unpacked builds
         uses: actions/upload-artifact@v4
         with:
           name: M2_SCOUT-win-unpacked
-          path: dist/win-unpacked
+          path: |
+            dist/win-unpacked
+            dist/win-arm64-unpacked
           retention-days: 14

@@ -3,8 +3,8 @@ name: Release
 # Publish a Windows release when a version tag is pushed, e.g.:
 #   git tag v0.0.1
 #   git push origin v0.0.1
-# Builds the portable zip with electron-builder and attaches it to a GitHub
-# Release created for the tag.
+# Builds the x64 and arm64 NSIS installers with electron-builder and attaches
+# both to a GitHub Release created for the tag.
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Windows installer (electron-builder NSIS)
+      - name: Build Windows installers (x64 + arm64, electron-builder NSIS)
         run: npm run dist
 
       - name: List artifacts
@@ -57,9 +57,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $setup = Get-ChildItem dist -Filter '*Setup*.exe' | Select-Object -First 1
-          if (-not $setup) { Write-Host "No Setup .exe found in dist/"; exit 1 }
+          $setups = Get-ChildItem dist -Filter '*Setup*.exe'
+          if (-not $setups) { Write-Host "No Setup .exe found in dist/"; exit 1 }
           $tag = $env:GITHUB_REF_NAME
-          $notes = "Automated Windows x64 installer for M2_SCOUT $tag.`n`nRun the Setup .exe and follow the interactive installer. It installs M2_SCOUT, sets the app icon, and adds the Explorer right-click 'search this folder' menu pointing at the installed app (any previous entry is replaced)."
-          gh release create $tag $setup.FullName --title "M2_SCOUT $tag" --notes $notes
+          $notes = "Automated Windows installers for M2_SCOUT $tag.`n`nPick the installer that matches your PC:`n- ...-x64.exe   : Intel / AMD 64-bit (most Windows PCs)`n- ...-arm64.exe : Windows on ARM (Snapdragon / ARM64 PCs)`n`nRun the Setup .exe and follow the interactive installer. It installs M2_SCOUT, sets the app icon, and adds the Explorer right-click 'search this folder' menu pointing at the installed app (any previous entry is replaced)."
+          $files = $setups | ForEach-Object { $_.FullName }
+          gh release create $tag $files --title "M2_SCOUT $tag" --notes $notes
 
