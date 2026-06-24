@@ -18,17 +18,6 @@
 const fs = require('fs');
 const { PreviewConfig } = require('./config');
 
-function getMatchLineNumbers(allLines, keyword, caseSensitive) {
-  const out = [];
-  const needle = caseSensitive ? keyword : keyword.toLowerCase();
-  if (!needle) return out;
-  for (let i = 0; i < allLines.length; i += 1) {
-    const hay = caseSensitive ? allLines[i] : allLines[i].toLowerCase();
-    if (hay.includes(needle)) out.push(i + 1);
-  }
-  return out;
-}
-
 function mergeRanges(ranges) {
   if (!ranges.length) return [];
   const sorted = ranges.slice().sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]));
@@ -47,10 +36,10 @@ function mergeRanges(ranges) {
 
 // Build the preview text for a file given keywords. Returns a string with
 // "N: line" prefixes and optional block separators.
-function buildPreviewText(filePath, keywords, caseSensitive, contextLines) {
+async function buildPreviewText(filePath, keywords, caseSensitive, contextLines) {
   let raw;
   try {
-    raw = fs.readFileSync(filePath, 'utf8');
+    raw = await fs.promises.readFile(filePath, 'utf8');
   } catch (e) {
     return `(Failed to open file)\n${e}\n`;
   }
@@ -58,12 +47,31 @@ function buildPreviewText(filePath, keywords, caseSensitive, contextLines) {
   const total = allLines.length;
   if (total === 0) return '(Empty file)\n';
 
-  const matchUnion = new Set();
+  // Normalise the keyword needles once. For case-insensitive matching we also
+  // lowercase each line a single time (instead of once per keyword) below.
+  const needles = [];
   for (const kw of keywords) {
-    for (const ln of getMatchLineNumbers(allLines, kw, caseSensitive)) matchUnion.add(ln);
+    const n = caseSensitive ? kw : (kw || '').toLowerCase();
+    if (n) needles.push(n);
   }
 
-  if (matchUnion.size === 0) {
+  // Single pass over the file, testing every keyword per line. Pushing line
+  // numbers in ascending order yields an already-sorted, duplicate-free list,
+  // so no Set or sort is needed afterwards.
+  const matchLines = [];
+  if (needles.length) {
+    for (let i = 0; i < total; i += 1) {
+      const hay = caseSensitive ? allLines[i] : allLines[i].toLowerCase();
+      for (let k = 0; k < needles.length; k += 1) {
+        if (hay.includes(needles[k])) {
+          matchLines.push(i + 1);
+          break;
+        }
+      }
+    }
+  }
+
+  if (matchLines.length === 0) {
     const headN = 10;
     const n = Math.min(headN, total);
     const out = ['(No matches in this file with current keyword(s). Show file head)', ''];
@@ -73,7 +81,7 @@ function buildPreviewText(filePath, keywords, caseSensitive, contextLines) {
   }
 
   let ranges = [];
-  for (const ln of [...matchUnion].sort((a, b) => a - b)) {
+  for (const ln of matchLines) {
     const s = Math.max(1, ln - contextLines);
     const e = Math.min(total, ln + contextLines);
     ranges.push([s, e]);

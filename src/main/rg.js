@@ -18,7 +18,11 @@ const { SearchConfig } = require('./config');
 
 // Build the ripgrep argv (without the exe). Emits --json --stats and uses
 // fixed-strings literal matching, matching M2_SEEK behavior.
-function rgSearchArgs(folder, keyword, inc, exd, exf, caseSensitive, respectIgnoreFiles) {
+//
+// `keywords` may be a single string or an array. When several patterns are
+// passed they are emitted as multiple `-e` patterns so ripgrep matches their
+// union (OR) in a SINGLE filesystem scan instead of one process per keyword.
+function rgSearchArgs(folder, keywords, inc, exd, exf, caseSensitive, respectIgnoreFiles) {
   const args = ['--json', '--stats', '--fixed-strings'];
 
   if (!respectIgnoreFiles) {
@@ -34,7 +38,11 @@ function rgSearchArgs(folder, keyword, inc, exd, exf, caseSensitive, respectIgno
     args.push('-g', g);
   }
 
-  args.push(keyword, folder);
+  // `-e` also protects patterns that start with '-' from being parsed as flags.
+  const kws = Array.isArray(keywords) ? keywords : [keywords];
+  for (const kw of kws) args.push('-e', kw);
+
+  args.push(folder);
   return args;
 }
 
