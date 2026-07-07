@@ -11,27 +11,23 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  # Run the v4 JS actions on Node 24 (they ship for Node 20, which GitHub is retiring).
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   build-windows:
     runs-on: windows-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
 
       # electron-builder downloads a ~110 MB Electron binary; cache it between runs.
       - name: Cache Electron downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~\AppData\Local\electron\Cache
@@ -89,7 +85,7 @@ jobs:
           Write-Host "Layout OK for x64 + arm64: M2_SCOUT.exe + native TOOLS + FONTS + LOGO + INI templates present"
 
       - name: Upload unpacked builds
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: M2_SCOUT-win-unpacked
           path: |
