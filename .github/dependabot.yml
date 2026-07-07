@@ -1,0 +1,70 @@
+# ============================================================
+# M2_SCOUT - Dependabot configuration
+#
+# Dependabot watches our dependencies and automatically opens a Pull Request
+# whenever a newer version is published. The PR *is* the "please update"
+# reminder: it bumps package.json + package-lock.json (or a workflow's action
+# pin) so you only have to review, let CI run, and merge.
+#
+# Two ecosystems are tracked:
+#   1. npm            -> Electron, electron-builder, pidusage, ...
+#   2. github-actions -> actions/checkout, actions/setup-node, actions/cache
+#
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# ============================================================
+
+version: 2
+
+updates:
+  # ----------------------------------------------------------
+  # npm application dependencies (root package.json)
+  # ----------------------------------------------------------
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: "Asia/Taipei"
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - npm
+    commit-message:
+      # e.g. "deps: bump electron-builder from 24.13.3 to 25.0.0"
+      prefix: deps
+      prefix-development: deps-dev
+    groups:
+      # Bundle low-risk minor + patch bumps into ONE combined PR to cut noise.
+      npm-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    # NOTE: major bumps (e.g. Electron 31 -> 43) intentionally fall OUTSIDE the
+    # group above, so each one arrives as its own isolated PR. That keeps large,
+    # breaking upgrades easy to review and test one at a time.
+
+  # ----------------------------------------------------------
+  # GitHub Actions used inside .github/workflows/*.yml
+  # ----------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: "Asia/Taipei"
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      # e.g. "ci: bump actions/checkout from 4 to 5"
+      prefix: ci
+    groups:
+      # All action bumps in a single PR - they're almost always safe.
+      github-actions:
+        patterns:
+          - "*"

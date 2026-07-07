@@ -11,20 +11,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  # Run the v4 JS actions on Node 24 (they ship for Node 20, which GitHub is retiring).
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   code-quality:
     runs-on: windows-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
 
