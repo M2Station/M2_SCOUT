@@ -26,7 +26,7 @@
     "electron-builder": "^24.13.3"
   },
   "optionalDependencies": {
-    "pidusage": "^3.0.2"
+    "pidusage": "^4.0.1"
   },
   "build": {
     "appId": "com.m2station.m2scout",
