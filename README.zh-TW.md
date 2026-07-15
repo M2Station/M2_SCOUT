@@ -112,6 +112,51 @@ M2_SCOUT 依序解析執行檔位置：
 
 ---
 
+## 額外功能（超出 M2 SEEK 對齊範圍）
+
+以下是 M2_SCOUT 在 M2 SEEK 功能之上額外提供的功能，多數位於分頁列上的
+**設定 (⚙)** 彈出視窗中。
+
+### 應用程式自動更新
+
+在 **設定 (⚙)** 點擊 **檢查新版本**。M2_SCOUT 會比對目前版本與最新的
+[GitHub Release](https://github.com/M2Station/M2_SCOUT/releases)，若有新版本則：
+
+1. **提示** 目前與最新版本，
+2. **下載** 對應你 CPU 架構的 NSIS 安裝檔
+   (`M2_SCOUT-Setup-<version>-x64.exe` / `-arm64.exe`)，
+3. **啟動** 安裝程式（安裝程式會取代並重新啟動 App），
+4. 下次啟動時 **刪除** 已下載的安裝檔。
+
+### 工具自動更新 (rg / fd)
+
+`rg.exe` / `fd.exe` 欄位旁的 **檢查更新** 按鈕會從 GitHub 取得最新的
+ripgrep / fd Windows 版本，並將對應執行檔安裝到 `TOOLS/`。目標平台
+（x86_64 / aarch64）可在設定中選擇。
+
+### 佈景主題與語言
+
+- **5 種內建主題** — Daylight (Light)、Low Key (Dark)、VS Code (Dark)、
+  Army、Army (Dark)。選擇會被記住，並在首次繪製前套用（不會閃爍成錯誤主題）。
+- **雙語介面** — 英文與繁體中文，可在設定中即時切換。
+
+### FILES 清單額外功能
+
+- **清單 / 樹狀** 檢視切換，以及 **依名稱或命中數排序**。
+- **關鍵字搜尋紀錄** 彈出視窗（最近關鍵字，去重、由新到舊）。
+
+### Beyond Compare 整合
+
+在 FILES 清單選取兩個檔案後右鍵，即可用 **Beyond Compare** 開啟比對
+（自動偵測已安裝的版本）。
+
+### 內建字型自動安裝
+
+啟動時會將 `FONTS/` 內附的 `Source Code Pro` 字型以 per-user 方式安裝
+（Windows 10 1809+ 免系統管理員權限），確保 UI 字型堆疊正確解析。
+
+---
+
 ## 授權
 
 MIT. "Powered By OA Hsiao".
