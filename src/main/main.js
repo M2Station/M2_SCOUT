@@ -19,6 +19,7 @@ const { app, BrowserWindow, Menu } = require('electron');
 const { registerIpc } = require('./ipc');
 const { parentToolDir, appDir } = require('./paths');
 const { ensureFontsInstalled } = require('./fonts');
+const { cleanupDownloads } = require('./appUpdate');
 const { version: APP_VERSION } = require('../../package.json');
 
 const mainBootStartMs = Date.now();
@@ -224,6 +225,16 @@ app.whenReady().then(() => {
     } catch (e) {
       console.warn('[fonts] ensure failed:', e.message);
       startupMark('fonts:ensure:failed');
+    }
+
+    // Remove any installer left over from a previous self-update (completed or
+    // cancelled). Runs after the freshly installed/relaunched app starts, so the
+    // downloaded Setup .exe never lingers in the temp folder.
+    try {
+      cleanupDownloads();
+      startupMark('appUpdate:cleanup:done');
+    } catch (e) {
+      console.warn('[appUpdate] cleanup failed:', e.message);
     }
   });
 
