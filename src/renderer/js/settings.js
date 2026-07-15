@@ -40,6 +40,10 @@
   let platSel = null;
   let ctxLinesInput = null;
   let closeBtn = null;
+  let updRowEl = null;
+  let updLabelEl = null;
+  let updBtn = null;
+  let updBusy = false;
 
   function buildPopup() {
     overlay = document.createElement('div');
@@ -138,6 +142,21 @@
     ctxRow.appendChild(ctxLinesInput);
     panel.appendChild(ctxRow);
 
+    // App self-update row (shown only when the update bridge is available).
+    const M = window.m2scout;
+    if (M && M.appUpdate) {
+      updRowEl = document.createElement('div');
+      updRowEl.className = 'settings-row';
+      updLabelEl = document.createElement('span');
+      updLabelEl.className = 'settings-label';
+      updBtn = document.createElement('button');
+      updBtn.className = 'btn btn-blue';
+      updBtn.addEventListener('click', checkAppUpdate);
+      updRowEl.appendChild(updLabelEl);
+      updRowEl.appendChild(updBtn);
+      panel.appendChild(updRowEl);
+    }
+
     // Close button
     closeBtn = document.createElement('button');
     closeBtn.className = 'btn settings-close';
@@ -168,6 +187,11 @@
       const el = document.querySelector('[data-field="previewContextLines"]');
       ctxLinesInput.value = el ? (el.value || '13') : '13';
     }
+    if (updLabelEl) {
+      const v = (window.m2scout && window.m2scout.appVersion) || '?';
+      updLabelEl.textContent = `${t('appUpdate.version')} v${v}`;
+    }
+    if (updBtn && !updBusy) updBtn.textContent = t('appUpdate.button');
   }
 
   function show() {
@@ -177,6 +201,75 @@
   }
   function hide() { if (overlay) overlay.hidden = true; }
   function toggle() { if (!overlay || overlay.hidden) show(); else hide(); }
+
+  // Full app self-update flow: check GitHub for a newer release, and when one
+  // exists prompt the user, then download + launch the matching installer.
+  // The downloaded installer is cleaned up on the next app startup.
+  async function checkAppUpdate() {
+    const M = window.m2scout;
+    if (!M || !M.appUpdate || updBusy) return;
+    updBusy = true;
+    const restore = () => {
+      updBusy = false;
+      if (updBtn) { updBtn.disabled = false; updBtn.textContent = t('appUpdate.button'); }
+    };
+    if (updBtn) { updBtn.disabled = true; updBtn.textContent = t('appUpdate.checking'); }
+
+    let res;
+    try {
+      res = await M.appUpdate.check();
+    } catch (e) {
+      await M.showError(t('appUpdate.title'), String(e));
+      restore();
+      return;
+    }
+    if (!res || !res.ok) {
+      await M.showError(t('appUpdate.title'), (res && res.error) || t('appUpdate.checkFailed'));
+      restore();
+      return;
+    }
+    const cur = res.currentVersion || '?';
+    const latest = res.latestVersion || '?';
+    if (res.upToDate) {
+      await M.showInfo(t('appUpdate.title'), `${t('appUpdate.upToDate')} (v${cur})`);
+      restore();
+      return;
+    }
+    if (!res.asset) {
+      await M.showError(t('appUpdate.title'), t('appUpdate.noAsset'));
+      restore();
+      return;
+    }
+
+    let confirm;
+    try {
+      confirm = await M.showConfirm({
+        title: t('appUpdate.title'),
+        message: t('appUpdate.available', { cur, latest }),
+        detail: t('appUpdate.installDetail'),
+        confirmLabel: t('appUpdate.downloadInstall'),
+        cancelLabel: t('appUpdate.cancel'),
+      });
+    } catch (_e) { confirm = null; }
+    if (!confirm || !confirm.confirmed) { restore(); return; }
+
+    if (updBtn) updBtn.textContent = t('appUpdate.downloading');
+    let dl;
+    try {
+      dl = await M.appUpdate.download({ asset: res.asset, version: latest });
+    } catch (e) {
+      await M.showError(t('appUpdate.title'), String(e));
+      restore();
+      return;
+    }
+    if (!dl || !dl.ok) {
+      await M.showError(t('appUpdate.title'), (dl && dl.error) || t('appUpdate.downloadFailed'));
+      restore();
+      return;
+    }
+    await M.showInfo(t('appUpdate.title'), t('appUpdate.launched'));
+    restore();
+  }
 
   function init() {
     const btn = document.getElementById('btnSettings');

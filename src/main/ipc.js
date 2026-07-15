@@ -38,6 +38,7 @@ const { launchEditor } = require('./editor');
 const { loadCompiledHlRules } = require('./highlight');
 const { listDir: fsListDir } = require('./fsdialog');
 const toolUpdate = require('./toolUpdate');
+const appUpdate = require('./appUpdate');
 const cscope = require('./cscope');
 
 const activeSessions = new Map(); // sessionId -> session (rg or fd)
@@ -246,6 +247,26 @@ function registerIpc({ openCscopeWindow, getInitialFolder, getStartupLogs }) {
     const win = BrowserWindow.fromWebContents(e.sender);
     await dialog.showMessageBox(win, { type: 'info', title: title || 'Info', message: message || '' });
     return { ok: true };
+  });
+
+  // Yes/No confirmation. Returns { ok, confirmed } where confirmed is true only
+  // when the user picked the first (confirm) button.
+  ipcMain.handle('dialog:confirm', async (e, params) => {
+    const {
+      title, message, detail, confirmLabel, cancelLabel,
+    } = params || {};
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const r = await dialog.showMessageBox(win, {
+      type: 'question',
+      buttons: [confirmLabel || 'OK', cancelLabel || 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+      title: title || '',
+      message: message || '',
+      detail: detail || '',
+    });
+    return { ok: true, confirmed: r.response === 0 };
   });
 
   // ---- content search (ripgrep) ----
@@ -514,6 +535,14 @@ function registerIpc({ openCscopeWindow, getInitialFolder, getStartupLogs }) {
   });
   ipcMain.handle('tool:downloadUpdate', async (_e, params) => {
     try { return await toolUpdate.downloadAndInstall(params || {}); } catch (err) { return { ok: false, error: String((err && err.message) || err) }; }
+  });
+
+  // ---- app self-update (M2_SCOUT installer) ----
+  ipcMain.handle('app:checkUpdate', async () => {
+    try { return await appUpdate.checkUpdate(); } catch (err) { return { ok: false, error: String((err && err.message) || err) }; }
+  });
+  ipcMain.handle('app:downloadUpdate', async (_e, params) => {
+    try { return await appUpdate.downloadAndInstall(params || {}); } catch (err) { return { ok: false, error: String((err && err.message) || err) }; }
   });
 }
 

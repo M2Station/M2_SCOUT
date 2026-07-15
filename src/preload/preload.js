@@ -58,6 +58,8 @@ contextBridge.exposeInMainWorld('m2scout', {
   pickFile: (name) => ipcRenderer.invoke('dialog:pickFile', { name }),
   showError: (title, message) => ipcRenderer.invoke('dialog:error', { title, message }),
   showInfo: (title, message) => ipcRenderer.invoke('dialog:info', { title, message }),
+  // Yes/No confirmation dialog. Resolves { ok, confirmed }.
+  showConfirm: (opts) => ipcRenderer.invoke('dialog:confirm', opts || {}),
 
   // search
   startSearch: (params) => ipcRenderer.invoke('search:start', params),
@@ -110,6 +112,15 @@ contextBridge.exposeInMainWorld('m2scout', {
   tool: {
     checkUpdate: (params) => ipcRenderer.invoke('tool:checkUpdate', params),
     downloadUpdate: (params) => ipcRenderer.invoke('tool:downloadUpdate', params),
+  },
+
+  // Running app version (read synchronously from package.json).
+  appVersion: require('../../package.json').version,
+
+  // app self-update (M2_SCOUT installer)
+  appUpdate: {
+    check: () => ipcRenderer.invoke('app:checkUpdate'),
+    download: (params) => ipcRenderer.invoke('app:downloadUpdate', params),
   },
 
   // app events
