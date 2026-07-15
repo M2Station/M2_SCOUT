@@ -75,8 +75,8 @@ working.
 
 ```powershell
 npm install     # first time (adds electron-builder)
-npm run pack    # unpacked build  -> dist/win-unpacked/M2_SCOUT.exe (CI smoke test)
-npm run dist    # NSIS installer  -> dist/M2_SCOUT-Setup-<version>.exe
+npm run pack    # unpacked build   -> dist/win-unpacked/M2_SCOUT.exe (CI smoke test)
+npm run dist    # NSIS installers  -> dist/M2_SCOUT-Setup-<version>-<arch>.exe (x64 + arm64)
 ```
 
 The app/installer/shortcut/uninstaller icon is `LOGO/M2_SCOUT.ico` (a multi-size
@@ -101,7 +101,7 @@ entry) to rebrand.
 | Workflow | Trigger | What it does |
 |---|---|---|
 | [`build.yml`](.github/workflows/build.yml) | every push / PR to `main` | `npm ci`, JS syntax check, `npm run pack`, verify the exe ships with TOOLS/FONTS/LOGO/INI/context-menu.ps1, upload the unpacked build |
-| [`release.yml`](.github/workflows/release.yml) | pushing a `v*` tag | build the NSIS installer and attach `M2_SCOUT-Setup-<version>.exe` to a GitHub Release |
+| [`release.yml`](.github/workflows/release.yml) | pushing a `v*` tag | build the x64 + arm64 NSIS installers and attach `M2_SCOUT-Setup-<version>-x64.exe` / `-arm64.exe` to a GitHub Release |
 
 ### Cutting a release
 
@@ -171,6 +171,53 @@ skill runs this flow for you.
 
 ---
 
+## Extra features (beyond M2 SEEK)
+
+M2_SCOUT-only additions layered on top of the M2 SEEK feature set. Most live in
+the **Settings (⚙)** popup on the tab bar.
+
+### App self-update
+
+In **Settings (⚙)** click **Check for update**. M2_SCOUT compares the running
+version against the latest [GitHub Release](https://github.com/M2Station/M2_SCOUT/releases)
+and, when a newer one exists:
+
+1. **prompts** you with current vs. latest version,
+2. **downloads** the NSIS installer matching your CPU architecture
+   (`M2_SCOUT-Setup-<version>-x64.exe` / `-arm64.exe`),
+3. **launches** it (the installer replaces the app and relaunches it), and
+4. **deletes** the downloaded installer on the next startup.
+
+### Tool auto-update (rg / fd)
+
+The **Check update** button beside each `rg.exe` / `fd.exe` field fetches the
+latest ripgrep / fd Windows release from GitHub and installs the matching
+binary into `TOOLS/`. The target platform (x86_64 / aarch64) is set in Settings.
+
+### Themes & languages
+
+- **5 built-in themes** — Daylight (Light), Low Key (Dark), VS Code (Dark),
+  Army, Army (Dark). Remembered across runs and painted before the first frame
+  (no flash of the wrong theme).
+- **Bilingual UI** — English and Traditional Chinese, switched live in Settings.
+
+### FILES list extras
+
+- **List / Tree** view toggle and **sort by name or match count**.
+- **Keyword search history** popup (recent keywords, deduped, newest first).
+
+### Beyond Compare integration
+
+Select two files in the FILES list and right-click to diff them in **Beyond
+Compare** (auto-detected across installed versions).
+
+### Bundled font auto-install
+
+The `Source Code Pro` font in `FONTS/` is installed per-user on startup (no
+admin rights on Windows 10 1809+) so the UI font stack always resolves.
+
+---
+
 ## Project structure
 
 ```
@@ -182,7 +229,7 @@ M2_SCOUT/
 ├─ M2_SCOUT_HL.ini            syntax highlight rules
 └─ src/
    ├─ main/                   Electron main process (Node backend)
-   │  ├─ main.js              window lifecycle
+   │  ├─ main.js              window lifecycle + startup cleanup
    │  ├─ ipc.js               all IPC handlers
    │  ├─ config.js            constants (ported config classes)
    │  ├─ paths.js             app dir + exe resolver
@@ -196,7 +243,11 @@ M2_SCOUT/
    │  ├─ cscope.js            cscope index / query / preview
    │  ├─ preview.js           preview text builder
    │  ├─ editor.js            editor template + launch
-   │  └─ highlight.js         HL rule compiler
+   │  ├─ highlight.js         HL rule compiler
+   │  ├─ fonts.js             bundled font auto-install (per-user)
+   │  ├─ fsdialog.js          in-app folder browser backend
+   │  ├─ toolUpdate.js        ripgrep / fd updater
+   │  └─ appUpdate.js         M2_SCOUT self-updater
    ├─ preload/preload.js      contextBridge API (window.m2scout)
    └─ renderer/
       ├─ index.html           main window
@@ -205,7 +256,14 @@ M2_SCOUT/
       └─ js/
          ├─ renderer.js       tabs, search lifecycle, files, preview, hotkeys
          ├─ highlight.js      client-side syntax/keyword highlighter
-         └─ cscope.js         CSCOPE window logic
+         ├─ cscope.js         CSCOPE window logic
+         ├─ i18n.js           English / Traditional Chinese strings
+         ├─ themes.js         theme registry (5 themes)
+         ├─ settings.js       Settings popup (language / theme / update)
+         ├─ history.js        keyword search history
+         ├─ folderPicker.js   keyboard-driven folder picker
+         ├─ excludePicker.js  exclude-groups picker
+         └─ editorPicker.js   editor chooser
 ```
 
 ---
