@@ -58,7 +58,14 @@ jobs:
             'build/installer.nsh',
             'src/renderer/js/i18n.js'
           )
-          $targets += (Get-ChildItem .github/workflows -Filter *.yml | ForEach-Object { $_.FullName })
+          # sync-m2-common-ai.yml is intentionally authored with zh-TW comments,
+          # so it is exempt from the ASCII guard. GitHub Actions parses workflow
+          # YAML as UTF-8, and its non-ASCII lives only in comments / string
+          # values, not in structural YAML.
+          $exempt = @('sync-m2-common-ai.yml')
+          $targets += (Get-ChildItem .github/workflows -Filter *.yml |
+            Where-Object { $exempt -notcontains $_.Name } |
+            ForEach-Object { $_.FullName })
           $fail = $false
           foreach ($t in $targets) {
             if (-not (Test-Path $t)) { continue }
